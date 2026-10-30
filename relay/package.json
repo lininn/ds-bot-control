@@ -1,0 +1,18 @@
+{
+  "name": "@lininn/ds-relay",
+  "version": "0.2.4",
+  "private": true,
+  "description": "Relay that lets a phone control a DS Bot desktop app",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  }
+}

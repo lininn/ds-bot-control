@@ -1,0 +1,41 @@
+{
+  "name": "@lininn/ds-web",
+  "version": "0.2.4",
+  "description": "Narrow-screen web shell for controlling a DS Bot team through a relay",
+  "keywords": [
+    "ds-bot",
+    "remote-control",
+    "web",
+    "mobile"
+  ],
+  "homepage": "https://github.com/Fei2411/DS-Bot#readme",
+  "bugs": {
+    "url": "https://github.com/Fei2411/DS-Bot/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Fei2411/DS-Bot.git",
+    "directory": "web"
+  },
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "manifest.json"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "vite": "8.3.4"
+  }
+}

@@ -1,0 +1,156 @@
+/* The narrow-screen frame. The Bot views keep their own sheets; this file gives them a
+   single column, a full-height chat, and space for a phone's safe areas. */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bt-canvas, #0f1115);
+  color: var(--bt-ink, #e6e6e6);
+  overflow: hidden;
+}
+
+.m-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* The top bar replaces the desktop floating header pill. */
+.m-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 10px;
+  border-bottom: 1px solid var(--bt-line, rgba(255, 255, 255, 0.08));
+  background: var(--bt-canvas, #0f1115);
+}
+
+.m-bar-title {
+  font-weight: 600;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The root bar pushes its action to the far end. */
+.m-bar-root .m-bar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.m-switch {
+  appearance: none;
+  border: 1px solid var(--bt-line, rgba(255, 255, 255, 0.16));
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.m-switch:active {
+  background: var(--bt-hover, rgba(255, 255, 255, 0.05));
+}
+
+.m-back {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 26px;
+  line-height: 1;
+  padding: 0 6px 2px 0;
+  cursor: pointer;
+}
+
+.m-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.m-main-chat {
+  overflow: hidden;
+}
+
+/* The Bot list. */
+.m-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0 calc(env(safe-area-inset-bottom, 0px) + 12px);
+}
+
+.m-list-empty {
+  padding: 24px 16px;
+  opacity: 0.6;
+}
+
+.m-bot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--bt-line, rgba(255, 255, 255, 0.08));
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.m-bot:active {
+  background: var(--bt-hover, rgba(255, 255, 255, 0.05));
+}
+
+.m-bot-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.m-bot-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.m-bot-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.m-bot-role {
+  font-size: 13px;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Chat: the shell provides the full-height flex parent Chat expects. */
+.m-main-chat .dsb-chat {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.m-main-chat .dsb-scroll {
+  padding-top: 0;
+}
+
+.m-main-chat .dsb-composer-root {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
