@@ -18,6 +18,9 @@ const MUST = 'must fix'
 const KEEP = 'can stay'
 
 const SELF = 'scripts/scan.mjs'
+// The name the package publishes under. This fork publishes the scoped package
+// `@lininn/ds-bot` from `lininn/ds-bot-control` instead of the vendor's `ds-bot`.
+const PKG_NAME = '@lininn/ds-bot'
 const PLACEHOLDER = /mock|test|fake|dummy|example|placeholder|should-not|xxx|your|<|\$\{|redact|sample/i
 const VENDORS = /\b(qwen|minimax|stepfun|kimi|moonshot|zhipu|glm|mimo|anthropic|claude|openai|gemini|mistral|xai|zai)\b/i
 // Files that define the look (characters, inks, logos, themes). Vendor names there are
@@ -118,7 +121,7 @@ if (!files.includes('LICENSE')) add(MUST, 'license', 'LICENSE', 0, 'no LICENSE a
 if (!files.includes('ds-bot/package.json')) add(MUST, 'plugin-folder', '.', 0, 'no ds-bot/package.json')
 else {
   const pkg = JSON.parse(readFileSync(join(root, 'ds-bot/package.json'), 'utf8'))
-  if (pkg.name !== 'ds-bot') add(MUST, 'package', 'ds-bot/package.json', 0, `name is "${pkg.name}", expected "ds-bot"`)
+  if (pkg.name !== PKG_NAME) add(MUST, 'package', 'ds-bot/package.json', 0, `name is "${pkg.name}", expected "${PKG_NAME}"`)
   if (!files.includes('ds-bot/LICENSE')) add(MUST, 'package', 'ds-bot/LICENSE', 0, 'the package has no LICENSE file')
   if (!(pkg.files ?? []).includes('LICENSE')) add(MUST, 'package', 'ds-bot/package.json', 0, '"files" does not list LICENSE')
   for (const field of ['repository', 'homepage', 'bugs']) {

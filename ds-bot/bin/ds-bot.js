@@ -117,13 +117,31 @@ function alive(pid) {
 }
 
 // A recycled pid must not be stopped: only a process still running dsh qualifies.
+// The full command line of a process, as the platform can report it. Windows has no `ps`,
+// so it asks PowerShell for Win32_Process.CommandLine; a pid that is gone prints nothing.
+function commandLine(pid) {
+  const [command, args] = process.platform === 'win32'
+    ? ['powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+        `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").CommandLine`]]
+    : ['ps', ['-p', String(pid), '-o', 'args=']]
+  return execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10_000 })
+}
+
 function looksLikeDsh(pid) {
   try {
-    const text = execFileSync('ps', ['-p', String(pid), '-o', 'args='], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
-    return /\bdsh\b|deepseek/i.test(text)
+    return /\bdsh\b|deepseek/i.test(commandLine(pid))
   } catch {
     return true
   }
+}
+
+// Windows has no signals: a .cmd shim is a shell around the real process, so the tree goes.
+function terminate(pid, signal = 'SIGTERM') {
+  if (process.platform === 'win32') {
+    try { execFileSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* already gone */ }
+    return
+  }
+  try { process.kill(pid, signal) } catch { /* already gone */ }
 }
 
 function readUrl(paths) {
@@ -211,6 +229,8 @@ async function start(options, paths) {
       stdio: ['ignore', fd, fd],
       cwd: process.cwd(),
       env: process.env,
+      // npm installs `dsh` as a .cmd shim on Windows, and Node refuses to spawn one directly.
+      shell: process.platform === 'win32' && !/\.exe$/i.test(options.dsh),
     })
   } finally {
     closeSync(fd)
@@ -255,11 +275,11 @@ async function stop(options, paths) {
     console.log(`pid ${pid} is not dsh; left it alone and removed the stale pidfile`)
     return 0
   }
-  try { process.kill(pid, 'SIGTERM') } catch { /* already gone */ }
+  terminate(pid)
   const deadline = Date.now() + 10_000
   while (Date.now() < deadline && alive(pid)) await new Promise(done => setTimeout(done, 100))
   if (alive(pid)) {
-    try { process.kill(pid, 'SIGKILL') } catch { /* already gone */ }
+    terminate(pid, 'SIGKILL')
     while (alive(pid)) await new Promise(done => setTimeout(done, 100))
   }
   clearState(paths)

@@ -48,27 +48,30 @@ test('dshArgv starts detachably with --no-open unless asked', () => {
 
 test('statePaths puts the pid, log and url under DSH_HOME by default', (t) => {
   const previous = process.env.DSH_HOME
-  process.env.DSH_HOME = '/tmp/dsh-home'
+  const home = '/tmp/dsh-home'
+  process.env.DSH_HOME = home
   t.after(() => { if (previous === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = previous })
   const paths = statePaths()
-  assert.equal(paths.dir, '/tmp/dsh-home/ds-bot-web')
-  assert.equal(paths.pid, '/tmp/dsh-home/ds-bot-web/web.pid')
-  assert.equal(paths.log, '/tmp/dsh-home/ds-bot-web/web.log')
-  assert.equal(paths.url, '/tmp/dsh-home/ds-bot-web/web.url')
-  assert.equal(statePaths('/srv/bot').pid, '/srv/bot/web.pid')
+  assert.equal(paths.dir, join(home, 'ds-bot-web'))
+  assert.equal(paths.pid, join(home, 'ds-bot-web', 'web.pid'))
+  assert.equal(paths.log, join(home, 'ds-bot-web', 'web.log'))
+  assert.equal(paths.url, join(home, 'ds-bot-web', 'web.url'))
+  assert.equal(statePaths('/srv/bot').pid, join('/srv/bot', 'web.pid'))
 })
 
-// A stand-in dsh: ignores the profile flags and stays up until it is told to stop.
+// A stand-in dsh: ignores the profile flags and stays up until it is told to stop. Windows
+// npm shims are .cmd files, and its shell has no `sleep`, so each platform gets its own form;
+// both spend their time in node, and both keep "dsh" in the command line that `stop` inspects.
 function fakeDsh(dir) {
+  const sleeper = join(dir, 'fake-dsh-sleeper.js')
+  writeFileSync(sleeper, 'setInterval(() => {}, 1000)\n')
+  if (process.platform === 'win32') {
+    const path = join(dir, 'fake-dsh.cmd')
+    writeFileSync(path, `@echo off\r\n"${process.execPath}" "${sleeper}"\r\n`)
+    return path
+  }
   const path = join(dir, 'fake-dsh')
-  writeFileSync(path, [
-    '#!/bin/sh',
-    'sleep 300 &',
-    'child=$!',
-    'trap "kill $child 2>/dev/null; exit 0" TERM INT',
-    'wait $child',
-    '',
-  ].join('\n'))
+  writeFileSync(path, `#!/bin/sh\nexec "${process.execPath}" "${sleeper}"\n`)
   chmodSync(path, 0o755)
   return path
 }
@@ -108,7 +111,8 @@ test('the CLI starts, reports and stops the background web', (t) => {
   assert.equal(run('status').status, 3)
 })
 
-test('the CLI still runs when npm exposes it as a symlink', (t) => {
+// npm links the bin on POSIX; on Windows it writes .cmd shims instead, so there is no link.
+test('the CLI still runs when npm exposes it as a symlink', { skip: process.platform === 'win32' ? 'no bin symlink on Windows' : false }, (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'ds-bot-cli-'))
   // npm links node_modules/.bin/ds-bot to the package's file; argv[1] is then the link.
   const link = join(dir, 'ds-bot-link')
