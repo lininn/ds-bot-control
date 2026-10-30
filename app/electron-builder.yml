@@ -62,4 +62,4 @@ linux:
 publish:
   provider: github
   owner: lininn
-  repo: DS-Bot
+  repo: ds-bot-control
