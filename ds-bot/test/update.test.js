@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, test } from 'node:test'
-import { cleanVersion, install, newer, sourceOf } from '../src/host/update.js'
+import { cleanVersion, install, newer, sourceOf, encodeName } from '../src/host/update.js'
 
 const PKG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const flush = async () => { for (let index = 0; index < 14; index += 1) await Promise.resolve() }
@@ -58,10 +58,10 @@ test('the install source decides where a newer version is looked for', () => {
   assert.deepEqual(sourceOf('npm:ds-bot@^0.1.0'), { kind: 'registry' })
   assert.deepEqual(sourceOf('link:E:/项目库/My Bots/ds-bot'), { kind: 'path' })
   assert.deepEqual(sourceOf('/home/user/ds-bot'), { kind: 'path' })
-  assert.deepEqual(sourceOf('github:Fei2411/DS-Bot#v0.1.0&path:/ds-bot'),
-    { kind: 'git', owner: 'Fei2411', repo: 'DS-Bot', ref: 'v0.1.0', rest: ['path:/ds-bot'] })
-  assert.deepEqual(sourceOf('git+https://github.com/Fei2411/DS-Bot.git#main'),
-    { kind: 'git', owner: 'Fei2411', repo: 'DS-Bot', rest: [] })
+  assert.deepEqual(sourceOf('github:lininn/ds-bot-control#v0.1.0&path:/ds-bot'),
+    { kind: 'git', owner: 'lininn', repo: 'ds-bot-control', ref: 'v0.1.0', rest: ['path:/ds-bot'] })
+  assert.deepEqual(sourceOf('git+https://github.com/lininn/ds-bot-control.git#main'),
+    { kind: 'git', owner: 'lininn', repo: 'ds-bot-control', rest: [] })
   assert.deepEqual(sourceOf('https://example.com/ds-bot-0.1.0.tgz'), { kind: 'tarball' })
   assert.deepEqual(sourceOf(undefined), { kind: 'unknown' })
 })
@@ -70,18 +70,18 @@ test('a registry install finds the newest version on the next registry and insta
   const { rt, fetched, installs } = start({
     source: `${PKG.name}@^${PKG.version}`,
     answers: {
-      [`https://registry.npmjs.org/${PKG.name}/latest`]: new Error('offline'),
-      [`https://registry.npmmirror.com/${PKG.name}/latest`]: { version: '9.0.0' },
+      [`https://registry.npmjs.org/${encodeName(PKG.name)}/latest`]: new Error('offline'),
+      [`https://registry.npmmirror.com/${encodeName(PKG.name)}/latest`]: { version: '9.0.0' },
     },
     result: { application: 'restart-required', version: '9.0.0' },
   })
   const view = await rt.updateCheck()
-  assert.deepEqual(fetched, [`https://registry.npmjs.org/${PKG.name}/latest`, `https://registry.npmmirror.com/${PKG.name}/latest`])
+  assert.deepEqual(fetched, [`https://registry.npmjs.org/${encodeName(PKG.name)}/latest`, `https://registry.npmmirror.com/${encodeName(PKG.name)}/latest`])
   assert.equal(view.available, true)
   assert.equal(view.latest, '9.0.0')
   assert.equal(view.current, PKG.version)
   assert.equal(view.source, 'registry')
-  assert.equal(view.notesUrl, 'https://github.com/Fei2411/DS-Bot/releases')
+  assert.equal(view.notesUrl, 'https://github.com/lininn/ds-bot-control/releases')
   assert.equal(rt.updateStart().phase, 'installing')
   await flush()
   assert.deepEqual(installs, [[`${PKG.name}@9.0.0`, { registry: 'https://registry.npmmirror.com/' }]])
@@ -95,11 +95,11 @@ test('a private registry of pnpm\'s own is asked alone, and an answer stands for
   const { rt, fetched } = start({
     source: `${PKG.name}@^${PKG.version}`,
     registries: { registry: null, fallbackRegistries: ['https://registry.npmmirror.com/'], resolved: 'https://npm.corp.example/' },
-    answers: { [`https://npm.corp.example/${PKG.name}/latest`]: { version: PKG.version } },
+    answers: { [`https://npm.corp.example/${encodeName(PKG.name)}/latest`]: { version: PKG.version } },
   })
   const view = await rt.updateCheck()
   assert.equal(view.available, false)
-  assert.deepEqual(fetched, [`https://npm.corp.example/${PKG.name}/latest`])
+  assert.deepEqual(fetched, [`https://npm.corp.example/${encodeName(PKG.name)}/latest`])
   await rt.updateCheck()
   assert.equal(fetched.length, 1)
   await rt.updateCheck({ fresh: true })
@@ -108,15 +108,15 @@ test('a private registry of pnpm\'s own is asked alone, and an answer stands for
 
 test('a versioned GitHub install follows the latest release tag and keeps its path', async () => {
   const { rt, installs } = start({
-    source: 'github:Fei2411/DS-Bot#v0.1.0&path:/ds-bot',
-    answers: { 'https://api.github.com/repos/Fei2411/DS-Bot/releases/latest': { tag_name: 'v9.1.0' } },
+    source: 'github:lininn/ds-bot-control#v0.1.0&path:/ds-bot',
+    answers: { 'https://api.github.com/repos/lininn/ds-bot-control/releases/latest': { tag_name: 'v9.1.0' } },
   })
   const view = await rt.updateCheck()
   assert.equal(view.available, true)
   assert.equal(view.latest, '9.1.0')
   rt.updateStart()
   await flush()
-  assert.deepEqual(installs, [['github:Fei2411/DS-Bot#v9.1.0&path:/ds-bot', {}]])
+  assert.deepEqual(installs, [['github:lininn/ds-bot-control#v9.1.0&path:/ds-bot', {}]])
 })
 
 test('a versioned GitHub install follows the release to the repository\'s current address', async () => {
@@ -125,7 +125,7 @@ test('a versioned GitHub install follows the release to the repository\'s curren
     answers: {
       'https://api.github.com/repos/old-owner/DeepSeek-Bot/releases/latest': {
         tag_name: 'v9.1.0',
-        html_url: 'https://github.com/Fei2411/DS-Bot/releases/tag/v9.1.0',
+        html_url: 'https://github.com/lininn/ds-bot-control/releases/tag/v9.1.0',
       },
     },
   })
@@ -134,11 +134,11 @@ test('a versioned GitHub install follows the release to the repository\'s curren
   assert.equal(view.latest, '9.1.0')
   rt.updateStart()
   await flush()
-  assert.deepEqual(installs, [['github:Fei2411/DS-Bot#v9.1.0&path:/ds-bot', {}]])
+  assert.deepEqual(installs, [['github:lininn/ds-bot-control#v9.1.0&path:/ds-bot', {}]])
 })
 
 test('a linked checkout, an unversioned git install, or a disabled check never asks the network', async () => {
-  for (const source of [`link:/work/${PKG.name}`, 'github:Fei2411/DS-Bot#main', undefined]) {
+  for (const source of [`link:/work/${PKG.name}`, 'github:lininn/ds-bot-control#main', undefined]) {
     const { rt, fetched } = start({ source })
     const view = await rt.updateCheck()
     assert.equal(view.available, false)
@@ -153,7 +153,7 @@ test('a linked checkout, an unversioned git install, or a disabled check never a
 test('in the desktop app, which updates as a whole, it never asks the network and offers nothing', async (t) => {
   process.env.DS_BOT_APP = '1'
   t.after(() => { delete process.env.DS_BOT_APP })
-  const { rt, fetched } = start({ source: `${PKG.name}@^${PKG.version}`, answers: { [`https://registry.npmjs.org/${PKG.name}/latest`]: { version: '9.0.0' } } })
+  const { rt, fetched } = start({ source: `${PKG.name}@^${PKG.version}`, answers: { [`https://registry.npmjs.org/${encodeName(PKG.name)}/latest`]: { version: '9.0.0' } } })
   const view = await rt.updateCheck({ fresh: true })
   assert.equal(view.source, 'app')
   assert.equal(view.available, false)
@@ -162,10 +162,10 @@ test('in the desktop app, which updates as a whole, it never asks the network an
 })
 
 test('the star count comes from the repository, is kept for an hour, and survives a failed answer', async () => {
-  const repo = 'https://api.github.com/repos/Fei2411/DS-Bot'
+  const repo = 'https://api.github.com/repos/lininn/ds-bot-control'
   const answers = { [repo]: new Error('offline') }
   const { rt, fetched } = start({ source: `${PKG.name}@^${PKG.version}`, answers })
-  assert.equal(rt.updateView().repoUrl, 'https://github.com/Fei2411/DS-Bot')
+  assert.equal(rt.updateView().repoUrl, 'https://github.com/lininn/ds-bot-control')
   assert.equal(await rt.repoStars(), null)
   answers[repo] = { stargazers_count: 42 }
   assert.equal(await rt.repoStars(), 42)
@@ -179,7 +179,7 @@ test('without a source from the plugin manager, the profile\'s own dependency en
   writeFileSync(join(dir, 'package.json'), JSON.stringify({ dependencies: { [PKG.name]: `^${PKG.version}` } }))
   const { rt } = start({
     profileDir: dir,
-    answers: { [`https://registry.npmjs.org/${PKG.name}/latest`]: { version: '9.0.0' } },
+    answers: { [`https://registry.npmjs.org/${encodeName(PKG.name)}/latest`]: { version: '9.0.0' } },
   })
   const view = await rt.updateCheck()
   assert.equal(view.source, 'registry')
@@ -193,7 +193,7 @@ test('a check that finds nothing clears the version a check before it found', as
   const dir = mkdtempSync(join(tmpdir(), 'ds-bot-update-'))
   const setSource = source => writeFileSync(join(dir, 'package.json'), JSON.stringify({ dependencies: { [PKG.name]: source } }))
   setSource(`^${PKG.version}`)
-  const latest = `https://registry.npmjs.org/${PKG.name}/latest`
+  const latest = `https://registry.npmjs.org/${encodeName(PKG.name)}/latest`
   const answers = { [latest]: { version: '9.0.0' } }
   const { rt } = start({ profileDir: dir, answers })
   const offered = await rt.updateCheck()
@@ -219,7 +219,7 @@ test('a failed install reports why and can be tried again', async () => {
   const { rt, installs } = start({
     source: `${PKG.name}@^${PKG.version}`,
     config: { updateRegistry: 'https://registry.example' },
-    answers: { [`https://registry.example/${PKG.name}/latest`]: { version: '9.0.0' } },
+    answers: { [`https://registry.example/${encodeName(PKG.name)}/latest`]: { version: '9.0.0' } },
     result: () => (++attempt === 1
       ? { application: 'failed', error: { code: 'incompatible-version', diagnostic: 'needs a newer DSH' } }
       : { application: 'restart-required', version: '9.0.0' }),
@@ -250,7 +250,7 @@ test('a plain refusal or success needs no removal and writes no note', async () 
   const { rt, installs, removes } = start({
     source: `${PKG.name}@^${PKG.version}`,
     config: { updateRegistry: 'https://registry.example' },
-    answers: { [`https://registry.example/${PKG.name}/latest`]: { version: '9.0.0' } },
+    answers: { [`https://registry.example/${encodeName(PKG.name)}/latest`]: { version: '9.0.0' } },
     result: { application: 'restart-required', version: '9.0.0' },
     home,
   })
@@ -270,7 +270,7 @@ test('an already-installed refusal removes the bundle, reinstalls and leaves a n
   const { rt, installs, removes } = start({
     source: `${PKG.name}@^${PKG.version}`,
     config: { updateRegistry: 'https://registry.example' },
-    answers: { [`https://registry.example/${PKG.name}/latest`]: { version: '9.0.0' } },
+    answers: { [`https://registry.example/${encodeName(PKG.name)}/latest`]: { version: '9.0.0' } },
     result: (count) => {
       calls.push(`install${count}`)
       return count === 1 ? { error: { code: 'already-installed' } } : { application: 'applied', version: '9.0.0' }
@@ -300,7 +300,7 @@ test('a failed removal fails the update without a second install', async () => {
   const { rt, installs, removes } = start({
     source: `${PKG.name}@^${PKG.version}`,
     config: { updateRegistry: 'https://registry.example' },
-    answers: { [`https://registry.example/${PKG.name}/latest`]: { version: '9.0.0' } },
+    answers: { [`https://registry.example/${encodeName(PKG.name)}/latest`]: { version: '9.0.0' } },
     result: count => (count === 1 ? { error: { code: 'already-installed' } } : { application: 'applied', version: '9.0.0' }),
     remove: { error: { code: 'bundle-in-use' } },
     home,
@@ -322,7 +322,7 @@ test('a failed reinstall writes its reason into the note', async () => {
   const { rt } = start({
     source: `${PKG.name}@^${PKG.version}`,
     config: { updateRegistry: 'https://registry.example' },
-    answers: { [`https://registry.example/${PKG.name}/latest`]: { version: '9.0.0' } },
+    answers: { [`https://registry.example/${encodeName(PKG.name)}/latest`]: { version: '9.0.0' } },
     result: count => (count === 1 ? { error: { code: 'already-installed' } } : { error: { code: 'operation-error', diagnostic: 'pnpm: tarball 500' } }),
     home,
   })
@@ -341,7 +341,7 @@ test('a reinstall refused by an application state also puts the old version back
   const { rt, installs } = start({
     source: `${PKG.name}@^${PKG.version}`,
     config: { updateRegistry: 'https://registry.example' },
-    answers: { [`https://registry.example/${PKG.name}/latest`]: { version: '9.0.0' } },
+    answers: { [`https://registry.example/${encodeName(PKG.name)}/latest`]: { version: '9.0.0' } },
     result: count => (count === 1 ? { error: { code: 'already-installed' } } : count === 2 ? { application: 'failed' } : { application: 'applied', version: PKG.version }),
     home,
   })

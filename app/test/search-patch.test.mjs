@@ -16,15 +16,15 @@ function profile(user = [], { auto = true } = {}) {
     name: 'ds-bot', dir, patchPath: join(dir, 'cordis.patch.yml'), skippedBundles: [],
     layers: [
       { packageName: '@deepseek-ai/dsh-base', packageDir: '', patchPaths: [], patches: [{ insert: [{ id: 'web', name: DSH_WEB, config: { searchProvider: 'deepseek-official', fetchProvider: 'http' } }] }] },
-      { packageName: 'ds-bot', packageDir: '', patchPaths: [], patches: [
-        ...(auto ? [{ insert: [{ id: 'web-search-auto', name: 'ds-bot/web-search' }] }] : []),
+      { packageName: '@lininn/ds-bot', packageDir: '', patchPaths: [], patches: [
+        ...(auto ? [{ insert: [{ id: 'web-search-auto', name: '@lininn/ds-bot/web-search' }] }] : []),
         { id: 'web', config: { searchProvider: 'auto', fetchProvider: 'http' } },
       ] },
     ],
     patches: user,
   }
 }
-const disabledAuto = { id: 'web-search-auto', name: 'ds-bot/web-search', disabled: true }
+const disabledAuto = { id: 'web-search-auto', name: '@lininn/ds-bot/web-search', disabled: true }
 
 describe('searchSelectorPatch', () => {
   const made = []

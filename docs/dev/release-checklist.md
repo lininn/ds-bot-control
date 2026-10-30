@@ -29,14 +29,14 @@ CI 只跑单元测试和 Linux 上的测试台。窗口外框、输入法、高 
 | 2.1 | `.tgz` | 插件 → 添加插件 → 填 `.tgz` 的完整路径（去掉引号）→ 安装 → 立即启用 | 装好；需要时提示重启 | |
 | 2.2 | `.tgz` 的路径 | 用系统「复制为路径 / 拷贝路径名」得到的路径直接填；路径里有空格、中文时也试一次 | 能装 | |
 | 2.3 | npm（发布后） | 填 `ds-bot`；再用「中国大陆镜像源」装一次 | 两种安装源都能装，版本是新版 | |
-| 2.4 | GitHub（发布后，需要 Git） | 填 `github:Fei2411/DS-Bot#v<版本>&path:/ds-bot` | 能装；没装 Git 时记下错误信息 | |
+| 2.4 | GitHub（发布后，需要 Git） | 填 `github:lininn/ds-bot-control#v<版本>&path:/ds-bot` | 能装；没装 Git 时记下错误信息 | |
 | 2.5 | 命令行 | 应用菜单 → 管理 dsh 命令 → 安装；退出 Desktop；新开终端运行 `dsh --version`、`dsh plugin --profile desktop add <tgz 路径>` | 能装；重启 Desktop 后生效 | |
 | 2.6 | 重启 | 完全退出（Windows：托盘图标 → 退出；macOS：⌘Q）再打开 | 团队界面出现 | |
 | 2.7 | 恢复（可选） | 故意装坏一次，看恢复对话框里的「禁用第三方插件」 | 能回到普通 DSH | |
 
 已知的坑：
 
-- 以前用 `link:` 按路径装过、之后又移动或删除了源码目录：DSH 卸载插件时不删 profile 里 `node_modules/ds-bot` 这个失效的链接，再装 `.tgz` 会报没有写入权限（详情里是 `EPERM … rename … node_modules\ds-bot`）。退出 Desktop，只删掉这个链接，再装一次。Windows：`cmd /c rmdir "%USERPROFILE%\.dsh\profiles\desktop\node_modules\ds-bot"`。这是 DSH 的问题，正常安装的用户不会遇到。
+- 以前用 `link:` 按路径装过、之后又移动或删除了源码目录：DSH 卸载插件时不删 profile 里 `node_modules/@lininn/ds-bot` 这个失效的链接，再装 `.tgz` 会报没有写入权限（详情里是 `EPERM … rename … node_modules\@lininn\ds-bot`）。退出 Desktop，只删掉这个链接，再装一次。Windows：`cmd /c rmdir "%USERPROFILE%\.dsh\profiles\desktop\node_modules\@lininn\ds-bot"`。这是 DSH 的问题，正常安装的用户不会遇到。
 - 2.5 要用 Desktop 自己装的 `dsh`。npm 全局装的 `dsh` 改不了 Desktop 的 profile（`profile "desktop" is managed exclusively by the Electron application`）。两个都装了时，先用 `where.exe dsh`（macOS：`which -a dsh`）看用的是哪一个。
 
 ## 3. 窗口外框

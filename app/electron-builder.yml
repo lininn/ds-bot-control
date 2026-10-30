@@ -51,7 +51,7 @@ linux:
   # terminal command should not have.
   executableName: deepseek-bot
   # A deb needs a maintainer; package.json's author has no email, so it goes here.
-  maintainer: Fei2411 <https://github.com/Fei2411>
+  maintainer: lininn <https://github.com/lininn>
   # Links the running window to the menu entry (WM_CLASS = app id).
   syncDesktopName: true
   icon: assets/icon.png
@@ -61,5 +61,5 @@ linux:
 # so the build itself never publishes (--publish never).
 publish:
   provider: github
-  owner: Fei2411
+  owner: lininn
   repo: DS-Bot

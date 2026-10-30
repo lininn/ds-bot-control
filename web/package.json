@@ -8,13 +8,13 @@
     "web",
     "mobile"
   ],
-  "homepage": "https://github.com/Fei2411/DS-Bot#readme",
+  "homepage": "https://github.com/lininn/ds-bot-control#readme",
   "bugs": {
-    "url": "https://github.com/Fei2411/DS-Bot/issues"
+    "url": "https://github.com/lininn/ds-bot-control/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Fei2411/DS-Bot.git",
+    "url": "git+https://github.com/lininn/ds-bot-control.git",
     "directory": "web"
   },
   "license": "Apache-2.0",

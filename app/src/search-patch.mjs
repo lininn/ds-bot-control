@@ -27,7 +27,7 @@ export function searchSelectorPatch(profile) {
   const web = entries.find(entry => entry.id === 'web')
   if (web?.config?.searchProvider !== 'auto') return undefined
   // The web row as it composes from the bundles alone, before ds-bot's selection.
-  const base = layers.filter(({ packageName }) => packageName !== 'ds-bot')
+  const base = layers.filter(({ packageName }) => packageName !== '@lininn/ds-bot')
   const original = composeEntries(base.map(layer => layer.patches)).find(entry => entry.id === 'web')
   if (original?.config?.searchProvider === undefined || original.config.searchProvider === 'auto') return undefined
   return [{ id: 'web', name: original.name, config: original.config }]

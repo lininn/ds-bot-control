@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events'
 import { readFileSync } from 'node:fs'
 import { afterEach, test } from 'node:test'
 import { install } from '../src/host/dsh-update.js'
+import { encodeName } from '../src/host/update.js'
 
 const PKG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const flush = async () => { for (let index = 0; index < 8; index += 1) await Promise.resolve() }
@@ -49,10 +50,10 @@ function fakeChild(code) {
   return child
 }
 
-const registryLatest = dsBot => ({ [`https://registry.npmjs.org/${PKG.name}/latest`]: { version: PKG.version, dsBot } })
+const registryLatest = dsBot => ({ [`https://registry.npmjs.org/${encodeName(PKG.name)}/latest`]: { version: PKG.version, dsBot } })
 const githubLatest = (tag, manifest) => ({
-  'https://api.github.com/repos/Fei2411/DS-Bot/releases/latest': { tag_name: tag },
-  [`https://raw.githubusercontent.com/Fei2411/DS-Bot/${tag}/ds-bot/package.json`]: manifest,
+  'https://api.github.com/repos/lininn/ds-bot-control/releases/latest': { tag_name: tag },
+  [`https://raw.githubusercontent.com/lininn/ds-bot-control/${tag}/ds-bot/package.json`]: manifest,
 })
 
 test('the newest released bot declares the verified DSH, offered to an older npm install', async () => {
@@ -98,13 +99,13 @@ test('a minBot newer than the running bot gates the DSH update until the bot goe
 })
 
 test('a git or local install asks the public repo\'s latest release for its declaration', async () => {
-  for (const source of ['github:Fei2411/DS-Bot#v0.1.0&path:/ds-bot', 'link:/work/ds-bot', undefined]) {
+  for (const source of ['github:lininn/ds-bot-control#v0.1.0&path:/ds-bot', 'link:/work/ds-bot', undefined]) {
     const { rt, fetched } = start({ source, answers: githubLatest('v9.0.0', { dsBot: { verifiedDsh: '8.8.8' } }) })
     const view = await rt.dshUpdateCheck()
     assert.equal(view.verified, '8.8.8')
     assert.deepEqual(fetched, [
-      'https://api.github.com/repos/Fei2411/DS-Bot/releases/latest',
-      'https://raw.githubusercontent.com/Fei2411/DS-Bot/v9.0.0/ds-bot/package.json',
+      'https://api.github.com/repos/lininn/ds-bot-control/releases/latest',
+      'https://raw.githubusercontent.com/lininn/ds-bot-control/v9.0.0/ds-bot/package.json',
     ])
   }
 })
