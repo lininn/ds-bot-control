@@ -146,6 +146,13 @@ export function createTeam() {
       show(partFor(id))
     },
     landOn: id => show(partFor(id)),
+    // The phone shell shows one pane: leaving a conversation returns to the Bot list.
+    closeSession: () => {
+      const before = shown.getSnapshot()
+      if (before === null) return
+      shown.set(null)
+      editRow(before, row => ({ ...row, retainedBy: { mainView: 0 } }))
+    },
     toggleSidebar: () => layout.set(state => ({ ...state, wide: !state.wide })),
     markUnread: id => writeUnread(id, true),
     clearUnread: id => writeUnread(id, false),

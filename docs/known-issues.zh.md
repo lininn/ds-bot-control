@@ -30,12 +30,12 @@ dsh: disabling profile plugin row "bot": its declared peer dependencies cannot b
 
 换装别的 DS Bot 版本也没用。
 
-**原因：** DeepSeek Harness 加载插件前，会检查 profile 里的每一行插件配置。这条信息表示有一行的 id 是 `bot`，却没有包名。DS Bot 自己加的那一行带有包名 `ds-bot`，所以没有包名的那一行多半来自 profile 文件夹里的文件，比如 `cordis.patch.yml` 里一条已经对不上 DS Bot 那一行的 `- id: bot` 覆盖配置。我们没能复现这个问题，所以还不知道这样的一行是怎么留下来的。
+**原因：** DeepSeek Harness 加载插件前，会检查 profile 里的每一行插件配置。这条信息表示有一行的 id 是 `bot`，却没有包名。DS Bot 自己加的那一行带有包名 `@lininn/ds-bot`，所以没有包名的那一行多半来自 profile 文件夹里的文件，比如 `cordis.patch.yml` 里一条已经对不上 DS Bot 那一行的 `- id: bot` 覆盖配置。我们没能复现这个问题，所以还不知道这样的一行是怎么留下来的。
 
 **怎么处理：** profile 文件夹是 `~/.dsh/profiles/web/`（Windows：`C:\Users\<用户名>\.dsh\profiles\web\`）；设置了 `DSH_HOME` 时，是其中的 `profiles/web/`。Desktop 用 `profiles/desktop/`。
 
 1. 退出 DSH。
-2. 打开 profile 文件夹里的 `cordis.patch.yml`，找 `id: bot` 但没有 `name: ds-bot` 的一行，删掉这一行。改之前先备份这个文件。
+2. 打开 profile 文件夹里的 `cordis.patch.yml`，找 `id: bot` 但没有 `name: @lininn/ds-bot` 的一行，删掉这一行。改之前先备份这个文件。
 3. 确认同一文件夹的 `package.json` 在 `dependencies` 里有 `@lininn/ds-bot`。没有的话，重新添加 DS Bot：`npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add @lininn/ds-bot`。
 4. 重新启动 DSH。
 
@@ -62,7 +62,7 @@ Error: configured web provider "auto" is not registered
 
    ```yaml
    - id: web-search-auto
-     name: ds-bot/web-search
+     name: '@lininn/ds-bot/web-search'
      disabled: true
    - id: web
      name: '@deepseek-ai/dsh-web'

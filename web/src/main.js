@@ -18,6 +18,7 @@ import { SIDEBAR_CSS } from '../../ds-bot/src/client/sidebar.js'
 import { CONVERSATION_CSS, SHELL_CSS, installStyles } from '../../ds-bot/src/client/styles.js'
 import { USAGE_CSS } from '../../ds-bot/src/client/usage-page.js'
 import { createLocale } from '../../app/ui/src/locale.js'
+import '../../app/ui/src/app.css'
 import { App } from './app.js'
 import './mobile.css'
 

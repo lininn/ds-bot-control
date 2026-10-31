@@ -35,7 +35,7 @@ Tested with dsh `0.2.1-rc.2` (Web) and `0.2.0-rc.2` (Web and Desktop).
 
 The [project page](../README.md#install) has the full steps for dsh Desktop and dsh Web. In short:
 
-- dsh Desktop: Settings → Plugins → add `ds-bot` (npm), a `.tgz` file, or `github:lininn/ds-bot-control#v0.1.7&path:/ds-bot`.
+- dsh Desktop: Settings → Plugins → add `@lininn/ds-bot` (npm), a `.tgz` file, or `github:lininn/ds-bot-control#v0.2.4&path:/ds-bot`.
 - Command line: `dsh plugin --profile desktop add @lininn/ds-bot` (or `--profile web`).
 
 To work on the plugin from a checkout, add it to a dsh profile as a linked dependency and a bundle:
@@ -55,21 +55,23 @@ pnpm -s dsh --profile web --no-open
 
 The first time the team opens, the plugin creates a Main Bot called Chief.
 
-**Upgrading from the legacy `dsh-bot` package**: earlier builds used the package name `dsh-bot`. Remove `dsh-bot` from the profile before you add `ds-bot`, because both use the plugin id `bot`. Your team, chats and secrets stay where they are (see [Data and backups](#data-and-backups)); saved browser settings, the theme and Bot colors move over the first time DS Bot opens.
+**Upgrading from a legacy package name**: earlier builds used `dsh-bot` and then `ds-bot`. Remove either from the profile before you add `@lininn/ds-bot`, because they all use the plugin id `bot`. Your team, chats and secrets stay where they are (see [Data and backups](#data-and-backups)); saved browser settings, the theme and Bot colors move over the first time DS Bot opens.
 
 ## Command line
 
-`ds-bot` keeps the dsh web UI running in the background, so the Bot team (and remote control) stay reachable after the shell that started them exits. It ships with the npm package and needs `dsh` on `PATH` (or `--dsh <path>`). Install it globally, or call it through npx:
+`ds-bot` keeps the dsh web UI running in the background, so the Bot team (and remote control) stay reachable after the shell that started them exits. Install it globally, or call it through npx, and one command is enough:
 
 ```sh
-npm install -g ds-bot        # then: ds-bot <command>
-npx ds-bot <command>         # or without a global install
+npm install -g @lininn/ds-bot        # then: ds-bot <command>
+npx -p @lininn/ds-bot ds-bot <command>   # or without a global install
 
 ds-bot start      # start in the background; does nothing if it is already running
 ds-bot status     # whether it runs, with the pid, url and log
 ds-bot stop       # stop it
 ds-bot restart    # stop, then start
 ```
+
+When `dsh` is on `PATH` (or `DS_BOT_DSH`/`--dsh` names one), it runs that. Otherwise `start` runs the release this package is built for through `npx` (`dsBot.verifiedDsh` in its `package.json`, `DS_BOT_DSH_VERSION` overrides it) and adds `@lininn/ds-bot` to the profile when the profile does not list it yet, so you do not install dsh or the plugin by hand. `--no-setup` turns that profile change off.
 
 It boots `dsh --profile web --no-open` and keeps a pidfile, a log and the URL in `$DSH_HOME/ds-bot-web` (`--state-dir` overrides). Useful options: `--port`/`--host` to choose the listener, `--profile` for another profile, `--timeout <sec>` for how long `start` waits for the port (0 does not wait), and `--json` for status. `--dsh-arg` forwards one extra argument to `dsh` and may be repeated. `stop` refuses to kill a recycled pid that is not dsh, and `status` exits 3 when nothing is running. On macOS or Linux a launchd or systemd unit can call `ds-bot start` instead of managing it by hand.
 
@@ -79,7 +81,7 @@ Options go in the profile's `cordis.patch.yml`, under the `bot` entry. All of th
 
 ```yaml
 - id: bot
-  name: ds-bot
+  name: '@lininn/ds-bot'
   config:
     workspace: /path/to/workspace   # where the Bots work; default <home>/workspace
     home: /path/to/bot-data         # where the team is saved; default $DSH_HOME/bot
@@ -156,7 +158,7 @@ Each result starts with a `Search backend: …` line that names the path it took
 
 ```yaml
 - id: web-search-auto
-  name: ds-bot/web-search
+  name: '@lininn/ds-bot/web-search'
   disabled: true
 - id: web
   name: '@deepseek-ai/dsh-web'

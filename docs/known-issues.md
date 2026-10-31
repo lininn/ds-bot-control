@@ -30,12 +30,12 @@ dsh: disabling profile plugin row "bot": its declared peer dependencies cannot b
 
 Installing another version of DS Bot does not help.
 
-**Why:** before it loads a plugin, DeepSeek Harness checks each plugin row of the profile. This message means a row has the id `bot` but no package name. DS Bot adds its own row with the name `ds-bot`, so the row without a name most likely comes from a file in the profile folder, such as an override `- id: bot` in `cordis.patch.yml` that no longer matches DS Bot's row. We could not reproduce this, so we do not know yet how such a row is left behind.
+**Why:** before it loads a plugin, DeepSeek Harness checks each plugin row of the profile. This message means a row has the id `bot` but no package name. DS Bot adds its own row with the name `@lininn/ds-bot`, so the row without a name most likely comes from a file in the profile folder, such as an override `- id: bot` in `cordis.patch.yml` that no longer matches DS Bot's row. We could not reproduce this, so we do not know yet how such a row is left behind.
 
 **What to do:** the profile folder is `~/.dsh/profiles/web/` (Windows: `C:\Users\<user>\.dsh\profiles\web\`), or `profiles/web/` in `DSH_HOME` when it is set. For Desktop, use `profiles/desktop/` instead.
 
 1. Quit DSH.
-2. Open `cordis.patch.yml` in the profile folder. Look for a row with `id: bot` that has no `name: ds-bot` line, and remove that row. Keep a copy of the file first.
+2. Open `cordis.patch.yml` in the profile folder. Look for a row with `id: bot` that has no `name: @lininn/ds-bot` line, and remove that row. Keep a copy of the file first.
 3. Check that `package.json` in the same folder lists `@lininn/ds-bot` under `dependencies`. If it does not, add DS Bot again: `npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add @lininn/ds-bot`.
 4. Start DSH again.
 
@@ -62,7 +62,7 @@ The error code is `WEB_PROVIDER_CONFIGURED_MISSING`.
 
    ```yaml
    - id: web-search-auto
-     name: ds-bot/web-search
+     name: '@lininn/ds-bot/web-search'
      disabled: true
    - id: web
      name: '@deepseek-ai/dsh-web'

@@ -1,7 +1,7 @@
 # DS Bot in Docker
 
 This directory deploys DS Bot as a Docker image: a `dsh web` server (DeepSeek
-Harness) with the `ds-bot` plugin installed, ready for a NAS or any always-on
+Harness) with the DS Bot plugin (`@lininn/ds-bot`) installed, ready for a NAS or any always-on
 box. The container is the sandbox boundary — see [Permissions](#permissions).
 
 ## Requirements
@@ -165,9 +165,9 @@ docker compose up -d
 
 A rebuild changes the image and the DSH it contains. An existing persisted
 profile is reused, and the entrypoint does not manage plugin upgrades. The
-image is built and tested with dsh `0.2.0-rc.2`, the version
-DS Bot is verified with; a `DSH_VERSION` build arg exists, but other releases
-are untested and newer ones change how the server binds.
+image is built and tested with dsh `0.2.0-rc.2`; a `DSH_VERSION` build arg
+exists, but other releases are untested and newer ones change how the server
+binds.
 
 ## Prebuilt image
 
@@ -185,7 +185,7 @@ from the repository root would use the local root Compose file instead.
 ```yaml
 services:
   ds-bot:
-    image: ghcr.io/fei2411/ds-bot:dev
+    image: ghcr.io/lininn/ds-bot-control:dev
     ports:
       - "13080:3080"
     environment:

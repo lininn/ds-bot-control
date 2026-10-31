@@ -5,11 +5,18 @@
 //
 // The CLI never imports the plugin. It starts the `dsh` command the way DSH documents
 // (`dsh --profile web`), detaches it, and keeps a pidfile, a log and the URL it printed.
+// When dsh is not installed it runs the pinned release through npx and adds this plugin to
+// the profile, so a single global install of the package is enough.
 import { execFileSync, spawn } from 'node:child_process'
-import { closeSync, mkdirSync, openSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs'
+import { closeSync, mkdirSync, openSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+
+// The DSH release this package is built for. The desktop app pins the same line, and dsh-update
+// offers it in the UI. When dsh is not on PATH, npx runs this exact version instead of "latest".
+const PKG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+const DSH_SPEC = `@deepseek-ai/dsh@${process.env.DS_BOT_DSH_VERSION ?? PKG.dsBot?.verifiedDsh ?? 'latest'}`
 
 const USAGE = `Usage: ds-bot <command> [options]
 
@@ -24,22 +31,23 @@ Options:
   --port <port>       Listen port; omit to use the profile's own
   --host <host>       Bind one local interface address
   --open              Open a browser as well (default: --no-open)
-  --dsh <path>        The dsh executable (default: $DS_BOT_DSH, else "dsh" on PATH)
+  --dsh <path>        The dsh executable (default: $DS_BOT_DSH, then "dsh" on PATH, then npx)
   --dsh-arg <value>   One extra argument for dsh (repeatable)
   --state-dir <dir>   Where the pidfile and log live (default: $DSH_HOME/ds-bot-web)
-  --timeout <sec>     How long start waits for the port (default: 20, 0 = do not wait)
+  --timeout <sec>     How long start waits for the URL dsh prints (default: 20, 0 = do not wait)
   --json              Print status as JSON
+  --no-setup          Do not add @lininn/ds-bot to the profile when it is missing
   -h, --help          Show this help
 
 Environment:
   DSH_HOME            DSH's home; the default state directory sits under it
   DS_BOT_DSH          The dsh executable, when it is not on PATH
+  DS_BOT_DSH_VERSION  The npx fallback version (default: the dsBot.verifiedDsh in package.json)
 
-The web keeps serving after the shell that started it exits. On macOS or Linux a launchd or
-systemd unit can call \`ds-bot start\` instead of managing it by hand.
+When dsh is not installed, start runs it through npx and adds this plugin to the profile, so
+one \`npm install -g @lininn/ds-bot\` is enough. The web keeps serving after the shell that
+started it exits. On macOS or Linux a launchd or systemd unit can call \`ds-bot start\`.
 `
-
-const PROBE_HOSTS = new Set(['0.0.0.0', '::', ''])
 
 function statePaths(stateDir) {
   const dir = stateDir ?? join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'ds-bot-web')
@@ -54,7 +62,8 @@ function statePaths(stateDir) {
 function parseArgs(argv) {
   const options = {
     command: 'help', profile: 'web', port: undefined, host: undefined, open: false,
-    dsh: process.env.DS_BOT_DSH ?? 'dsh', dshArgs: [], stateDir: undefined, timeout: 20, json: false,
+    dsh: process.env.DS_BOT_DSH ?? 'dsh', dshExplicit: process.env.DS_BOT_DSH !== undefined,
+    dshArgs: [], stateDir: undefined, timeout: 20, json: false, setup: true,
   }
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
@@ -75,11 +84,12 @@ function parseArgs(argv) {
       case '--port': options.port = Number(value()); break
       case '--host': options.host = value(); break
       case '--open': options.open = true; break
-      case '--dsh': options.dsh = value(); break
+      case '--dsh': options.dsh = value(); options.dshExplicit = true; break
       case '--dsh-arg': options.dshArgs.push(value()); break
       case '--state-dir': options.stateDir = value(); break
       case '--timeout': options.timeout = Number(value()); break
       case '--json': options.json = true; break
+      case '--no-setup': options.setup = false; break
       default: throw new Error(`Unknown option: ${arg}`)
     }
   }
@@ -95,6 +105,52 @@ function dshArgv(options) {
   if (options.host !== undefined) args.push('--host', options.host)
   if (options.port !== undefined) args.push('--port', String(options.port))
   return [...args, ...options.dshArgs]
+}
+
+// Use an explicit dsh if given, else one on PATH, else the pinned release through npx. The
+// returned prefix goes before the dsh arguments: empty for a direct call, the npx preamble
+// otherwise, so the same code runs `plugin add` and boot.
+function resolveDsh(options) {
+  if (options.dshExplicit) return { command: options.dsh, prefix: [] }
+  try {
+    execFileSync(options.dsh, ['--version'], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10_000,
+      shell: process.platform === 'win32',
+    })
+    return { command: options.dsh, prefix: [] }
+  } catch {
+    return { command: 'npx', prefix: ['-y', DSH_SPEC], npx: true }
+  }
+}
+
+function profilePackage(profile) {
+  const home = process.env.DSH_HOME ?? join(homedir(), '.dsh')
+  return join(home, 'profiles', profile, 'package.json')
+}
+
+function hasPlugin(profile) {
+  try {
+    const pkg = JSON.parse(readFileSync(profilePackage(profile), 'utf8'))
+    return Boolean(pkg.dependencies?.['@lininn/ds-bot'])
+  } catch {
+    return false
+  }
+}
+
+// A fresh install has dsh but not this plugin in its profile. Add it once, so `ds-bot start`
+// works on its own; --no-setup keeps that off for a profile managed by something else.
+function ensurePlugin(options, dsh) {
+  if (!options.setup || hasPlugin(options.profile)) return
+  console.error(`adding @lininn/ds-bot to the ${options.profile} profile`)
+  try {
+    execFileSync(dsh.command, [...dsh.prefix, 'plugin', '--profile', options.profile, 'add', '@lininn/ds-bot'], {
+      stdio: 'inherit', shell: process.platform === 'win32',
+    })
+  } catch {
+    console.error(`could not add @lininn/ds-bot to the ${options.profile} profile; run it once by hand:`)
+    console.error(`  dsh plugin --profile ${options.profile} add @lininn/ds-bot`)
+    throw new Error('setup failed')
+  }
 }
 
 function readPid(paths) {
@@ -136,12 +192,16 @@ function looksLikeDsh(pid) {
 }
 
 // Windows has no signals: a .cmd shim is a shell around the real process, so the tree goes.
+// On POSIX the child is spawned detached, so it leads its own process group; signalling the
+// group also stops a grandchild such as the real dsh under npx.
 function terminate(pid, signal = 'SIGTERM') {
   if (process.platform === 'win32') {
     try { execFileSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* already gone */ }
     return
   }
-  try { process.kill(pid, signal) } catch { /* already gone */ }
+  try { process.kill(-pid, signal) } catch {
+    try { process.kill(pid, signal) } catch { /* already gone */ }
+  }
 }
 
 function readUrl(paths) {
@@ -166,32 +226,42 @@ function tailLog(paths, lines = 12) {
   }
 }
 
-function probeUrl(options) {
-  if (options.port === undefined || options.port === 0) return undefined
-  const host = PROBE_HOSTS.has(options.host ?? '') ? '127.0.0.1' : options.host
-  return `http://${host}:${options.port}/`
+function logSize(paths) {
+  try { return statSync(paths.log).size } catch { return 0 }
 }
 
-async function waitForPort(url, timeoutSec) {
-  if (url === undefined || timeoutSec <= 0) return false
+// dsh prints the page it serves once it is listening: `dsh web: http://127.0.0.1:3080/?token=…`.
+// The token is new on every run, so only the bytes this run appended are considered.
+const LOG_URL = /dsh web:\s*(\S+)/g
+
+function logUrl(paths, from = 0) {
+  let text
+  try { text = readFileSync(paths.log).subarray(from).toString('utf8') } catch { return undefined }
+  let last
+  for (const match of text.matchAll(LOG_URL)) last = match[1]
+  return last
+}
+
+async function waitForUrl(paths, from, timeoutSec) {
+  if (timeoutSec <= 0) return undefined
   const deadline = Date.now() + timeoutSec * 1000
   while (Date.now() < deadline) {
-    try {
-      await fetch(url, { signal: AbortSignal.timeout(500) })
-      return true
-    } catch { /* not listening yet */ }
+    const url = logUrl(paths, from)
+    if (url !== undefined) return url
     await new Promise(done => setTimeout(done, 200))
   }
-  return false
+  return undefined
 }
 
 function statusOf(paths) {
   const pid = readPid(paths)
+  const running = alive(pid)
   return {
-    running: alive(pid),
-    pid: alive(pid) ? pid : undefined,
-    stale: pid !== undefined && !alive(pid),
-    url: readUrl(paths),
+    running,
+    pid: running ? pid : undefined,
+    stale: pid !== undefined && !running,
+    // A server started by an older version, or by hand, left its URL only in the log.
+    url: readUrl(paths) ?? (running ? logUrl(paths) : undefined),
     log: paths.log,
     dir: paths.dir,
   }
@@ -221,23 +291,39 @@ async function start(options, paths) {
   }
   clearState(paths)
   mkdirSync(paths.dir, { recursive: true })
+
+  let dsh
+  try {
+    dsh = resolveDsh(options)
+  } catch (error) {
+    console.error(`could not look up dsh: ${error.message}`)
+    return 1
+  }
+  if (dsh.npx) console.error(`dsh not found; running it through npx (${DSH_SPEC})`)
+  try {
+    ensurePlugin(options, dsh)
+  } catch {
+    return 1
+  }
+
+  const from = logSize(paths)
   const fd = openSync(paths.log, 'a')
   let child
   try {
-    child = spawn(options.dsh, dshArgv(options), {
+    child = spawn(dsh.command, [...dsh.prefix, ...dshArgv(options)], {
       detached: true,
       stdio: ['ignore', fd, fd],
       cwd: process.cwd(),
       env: process.env,
-      // npm installs `dsh` as a .cmd shim on Windows, and Node refuses to spawn one directly.
-      shell: process.platform === 'win32' && !/\.exe$/i.test(options.dsh),
+      // npm installs `dsh` and npx as .cmd shims on Windows, and Node refuses to spawn one.
+      shell: process.platform === 'win32' && !/\.exe$/i.test(dsh.command),
     })
   } finally {
     closeSync(fd)
   }
   child.on('error', (error) => {
-    console.error(`could not start ${options.dsh}: ${error.message}`)
-    if (options.dsh === 'dsh') console.error('Install DeepSeek Harness, or pass --dsh <path>.')
+    console.error(`could not start ${dsh.command}: ${error.message}`)
+    if (dsh.npx) console.error(`Check the network for npx (${DSH_SPEC}), or pass --dsh <path>.`)
     process.exitCode = 1
   })
   if (child.pid === undefined) return 1
@@ -247,19 +333,17 @@ async function start(options, paths) {
   await new Promise(done => setTimeout(done, 400))
   if (!alive(child.pid)) {
     clearState(paths)
-    console.error(`${options.dsh} exited at once. Recent log:`)
+    console.error(`${dsh.command} exited at once. Recent log:`)
     const text = tailLog(paths)
     if (text !== '') console.error(text)
     return 1
   }
 
-  const url = probeUrl(options)
-  const ready = await waitForPort(url, options.timeout)
-  writeUrl(paths, ready ? url : undefined)
+  const url = await waitForUrl(paths, from, options.timeout)
+  writeUrl(paths, url)
   console.log(`started (pid ${child.pid})`)
-  if (ready) console.log(`url: ${url}`)
-  else if (url !== undefined) console.log(`no answer on ${url} yet; see ${paths.log}`)
-  else console.log(`log: ${paths.log}`)
+  if (url !== undefined) console.log(`url: ${url}`)
+  else console.log(`no url yet in ${paths.log}; it appears there once dsh is listening`)
   return 0
 }
 
@@ -330,4 +414,4 @@ if (runAsMain()) {
   main(process.argv.slice(2)).then((code) => { process.exitCode = code })
 }
 
-export { dshArgv, parseArgs, statePaths, statusOf, alive, looksLikeDsh }
+export { dshArgv, parseArgs, statePaths, statusOf, alive, looksLikeDsh, resolveDsh, hasPlugin, DSH_SPEC }

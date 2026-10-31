@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, sy
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
-import { dshArgv, parseArgs, statePaths } from '../bin/ds-bot.js'
+import { DSH_SPEC, dshArgv, parseArgs, resolveDsh, statePaths } from '../bin/ds-bot.js'
 
 const CLI = resolve(import.meta.dirname, '../bin/ds-bot.js')
 
@@ -16,7 +16,8 @@ test('parseArgs reads the command and its options', () => {
   ])
   assert.deepEqual(options, {
     command: 'start', profile: 'web', port: 8080, host: '0.0.0.0', open: true,
-    dsh: '/usr/local/bin/dsh', dshArgs: ['--foo', 'bar'], stateDir: '/tmp/x', timeout: 5, json: true,
+    dsh: '/usr/local/bin/dsh', dshExplicit: true, dshArgs: ['--foo', 'bar'],
+    stateDir: '/tmp/x', timeout: 5, json: true, setup: true,
   })
 })
 
@@ -29,6 +30,20 @@ test('parseArgs defaults to the background web profile', () => {
   assert.deepEqual(options.dshArgs, [])
   assert.equal(options.timeout, 20)
   assert.equal(options.json, false)
+  assert.equal(options.setup, true)
+  assert.equal(options.dshExplicit, false)
+})
+
+test('--no-setup keeps start from touching the profile', () => {
+  assert.equal(parseArgs(['start', '--no-setup']).setup, false)
+})
+
+test('resolveDsh keeps an explicit dsh and falls back to npx otherwise', () => {
+  assert.deepEqual(resolveDsh({ dsh: '/nope/dsh', dshExplicit: true }), { command: '/nope/dsh', prefix: [] })
+  const fallback = resolveDsh({ dsh: join(tmpdir(), 'no-such-dsh-for-test'), dshExplicit: false })
+  assert.equal(fallback.command, 'npx')
+  assert.deepEqual(fallback.prefix, ['-y', DSH_SPEC])
+  assert.equal(fallback.npx, true)
 })
 
 test('parseArgs rejects bad numbers and unknown options', () => {
@@ -62,16 +77,18 @@ test('statePaths puts the pid, log and url under DSH_HOME by default', (t) => {
 // A stand-in dsh: ignores the profile flags and stays up until it is told to stop. Windows
 // npm shims are .cmd files, and its shell has no `sleep`, so each platform gets its own form;
 // both spend their time in node, and both keep "dsh" in the command line that `stop` inspects.
-function fakeDsh(dir) {
+function fakeDsh(dir, announce) {
   const sleeper = join(dir, 'fake-dsh-sleeper.js')
   writeFileSync(sleeper, 'setInterval(() => {}, 1000)\n')
   if (process.platform === 'win32') {
     const path = join(dir, 'fake-dsh.cmd')
-    writeFileSync(path, `@echo off\r\n"${process.execPath}" "${sleeper}"\r\n`)
+    const line = announce === undefined ? '' : `echo dsh web: ${announce}\r\n`
+    writeFileSync(path, `@echo off\r\n${line}"${process.execPath}" "${sleeper}"\r\n`)
     return path
   }
   const path = join(dir, 'fake-dsh')
-  writeFileSync(path, `#!/bin/sh\nexec "${process.execPath}" "${sleeper}"\n`)
+  const line = announce === undefined ? '' : `echo "dsh web: ${announce}"\n`
+  writeFileSync(path, `#!/bin/sh\n${line}exec "${process.execPath}" "${sleeper}"\n`)
   chmodSync(path, 0o755)
   return path
 }
@@ -80,7 +97,8 @@ test('the CLI starts, reports and stops the background web', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'ds-bot-cli-'))
   const state = join(dir, 'state')
   const dsh = fakeDsh(dir)
-  const run = (...args) => spawnSync(process.execPath, [CLI, ...args, '--state-dir', state], { encoding: 'utf8', timeout: 20_000 })
+  // --no-setup keeps the stand-in dsh from being asked to add the plugin to a real profile.
+  const run = (...args) => spawnSync(process.execPath, [CLI, ...args, '--no-setup', '--state-dir', state], { encoding: 'utf8', timeout: 20_000 })
   t.after(() => {
     run('stop')
     rmSync(dir, { recursive: true, force: true, maxRetries: 5 })

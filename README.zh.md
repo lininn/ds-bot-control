@@ -34,12 +34,12 @@ DS Bot 是一个基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 **dsh Desktop（Windows、macOS）**
 
 1. 侧栏点 **插件** → **添加插件**。
-2. **包名或地址** 填 `ds-bot`。在中国大陆，**安装源** 选 **中国大陆镜像源**。
+2. **包名或地址** 填 `@lininn/ds-bot`。在中国大陆，**安装源** 选 **中国大陆镜像源**。
 3. 点 **安装**，再点 **立即启用**。如果提示“下次启动生效”，完全退出 dsh 再打开。
 
-连不上 npm 时，第 2 步也可以填 [Releases](https://github.com/lininn/ds-bot-control/releases) 里下载的 `lininn-ds-bot-0.2.1.tgz` 的完整路径，或者 `github:lininn/ds-bot-control#v0.2.1&path:/ds-bot`（需要装 Git）。
+连不上 npm 时，第 2 步也可以填 [Releases](https://github.com/lininn/ds-bot-control/releases) 里下载的 `lininn-ds-bot-0.2.4.tgz` 的完整路径，或者 `github:lininn/ds-bot-control#v0.2.4&path:/ds-bot`（需要装 Git）。
 
-DS Bot 0.2.1 及更早的版本在 DSH Desktop 0.2.1-rc.2 及以后的版本里不能自己更新：在插件页移除 `ds-bot`，再添加 `ds-bot`。Bot、聊天和记忆都会保留。
+从旧的 `ds-bot` 包升级：在插件页移除 `ds-bot`，再添加 `@lininn/ds-bot`。Bot、聊天和记忆都会保留。
 
 **dsh Web（Windows、macOS、Linux）**
 
@@ -49,6 +49,19 @@ DS Bot 0.2.1 及更早的版本在 DSH Desktop 0.2.1-rc.2 及以后的版本里�
 npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add @lininn/ds-bot
 npx @deepseek-ai/dsh@0.2.1-rc.2 web
 ```
+
+想让这个 Web UI 在后台一直运行（这样手机端随时能找到这个团队），包里还带了一个 `ds-bot` 命令：
+
+```sh
+npm install -g @lininn/ds-bot          # 之后直接：ds-bot start
+npx -p @lininn/ds-bot ds-bot start     # 或者不全局安装
+
+ds-bot status    # 是否在运行，以及 pid、url 和日志
+ds-bot stop      # 停止
+ds-bot restart   # 先停再启
+```
+
+它启动的是 `dsh --profile web --no-open`；`--port` 和 `--host` 可以指定监听地址，`--json` 让状态以 JSON 输出。没装 `dsh` 时，`start` 会用 `npx` 拉起本包指定的 DSH 版本，并把插件加进 profile，所以只要上面那条全局安装就够。详见[命令行](ds-bot/README.md#command-line)。
 
 **Docker（NAS、Linux 服务器）**
 
@@ -97,6 +110,10 @@ ds bot 拥有群聊功能。群聊是非常好的多 bot 协作方式，但它�
 在 设置 → 用量 里，可以按时间、按 bot、按模型查看 Token 用量。
 
 ![用量页](docs/images/usage.zh.png)
+
+### 远程控制
+
+设置 → **远程控制** 可以让手机驱动这个团队。电脑只向 relay 保持一条出站 WebSocket，本机不开端口。在设置页用博客账号登录，然后在手机上打开 relay 的网页，选择这台电脑即可。一个账号可以绑定多台电脑：多台在线时手机会显示设备列表，外壳页头的 **切换设备** 按钮可以回到列表。公共 relay 是 `https://ds.d-1.top`，没有另设地址时就用它；自己部署 relay 时设置 `relay.url` 或 `DS_BOT_RELAY_URL`。手机端只能访问 Bot API 里对手机安全的那部分。详见[远程控制](ds-bot/README.md#remote-control)和 [`relay/`](relay/README.md)。
 
 ## 数据
 

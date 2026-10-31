@@ -2,7 +2,30 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
-## [Unreleased]
+## [0.2.6] - 2026-10-30
+
+### Fixed
+
+- `npm install -g @lininn/ds-bot` no longer fails while resolving DSH peer dependencies. The four `@deepseek-ai/*` peers are now optional, because the CLI does not need them and a DSH profile supplies them when the package runs as a plugin. If npm still refuses on an older version, `npm install -g @lininn/ds-bot --legacy-peer-deps` installs the same package.
+
+## [0.2.5] - 2026-10-30
+
+### Changed
+
+- `ds-bot start` now runs DSH through `npx` when `dsh` is not installed (the pinned DSH `0.2.1-rc.5`), and adds `@lininn/ds-bot` to the profile when it is missing, so `npm install -g @lininn/ds-bot` alone is enough to start the team. `--no-setup` turns the profile change off, and `DS_BOT_DSH_VERSION` overrides the pinned DSH.
+
+## [0.2.4] - 2026-10-30
+
+### Added
+
+- **Remote control.** Settings → Remote control lets a phone drive the team: the computer keeps one outbound WebSocket to a relay and opens no port. Sign in with a blog account on both sides, and one account can bind several computers — the phone shows a device list when more than one is online, and **Switch device** in the header returns to it. The public relay is `https://ds.d-1.top`; `relay.url` or `DS_BOT_RELAY_URL` points at your own. The phone reaches only the phone-safe part of the Bot API. See [Remote control](ds-bot/README.md#remote-control).
+- A `ds-bot` command that keeps `dsh web` running in the background (`start`, `status`, `stop`, `restart`), so the team stays reachable after the shell that started it exits. See [Command line](ds-bot/README.md#command-line).
+- The relay server (`@lininn/ds-relay`) and the narrow-screen web shell (`@lininn/ds-web`) that the phone opens.
+- A prebuilt Docker image on GHCR for a NAS or an always-on Linux machine.
+
+### Changed
+
+- The package publishes as `@lininn/ds-bot` from `lininn/ds-bot-control`. Coming from `ds-bot`: remove it on the Plugins page and add `@lininn/ds-bot`; the Bots, chats and memory stay.
 
 ## [0.2.3] - 2026-10-27
 

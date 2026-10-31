@@ -34,12 +34,12 @@ First install DSH and set up at least one model in it. DS Bot uses the models fr
 **DSH Desktop (Windows, macOS)**
 
 1. In the sidebar, select **Plugins** → **Add plugin**.
-2. In **Package name or address**, enter `ds-bot`. In mainland China, set **Registry** to **Mainland China mirror**.
+2. In **Package name or address**, enter `@lininn/ds-bot`. In mainland China, set **Registry** to **Mainland China mirror**.
 3. Select **Install**, then **Enable now**. If DSH says the change takes effect at the next start, quit DSH completely and open it again.
 
-If npm is not reachable, in step 2 you can also enter the full path of `lininn-ds-bot-0.2.1.tgz` downloaded from [Releases](https://github.com/lininn/ds-bot-control/releases), or `github:lininn/ds-bot-control#v0.2.1&path:/ds-bot` (needs Git).
+If npm is not reachable, in step 2 you can also enter the full path of `lininn-ds-bot-0.2.4.tgz` downloaded from [Releases](https://github.com/lininn/ds-bot-control/releases), or `github:lininn/ds-bot-control#v0.2.4&path:/ds-bot` (needs Git).
 
-DS Bot 0.2.1 and earlier cannot update themselves in DSH Desktop 0.2.1-rc.2 or later: on the Plugins page, remove `ds-bot` and add `ds-bot` again. The Bots, chats and memory stay.
+Coming from the older `ds-bot` package: on the Plugins page, remove `ds-bot` and add `@lininn/ds-bot` again. The Bots, chats and memory stay.
 
 **DSH Web (Windows, macOS, Linux)**
 
@@ -50,7 +50,18 @@ npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add @lininn/ds-bot
 npx @deepseek-ai/dsh@0.2.1-rc.2 web
 ```
 
-To keep that web UI running in the background — so the team stays reachable from a phone — the package also ships a small `ds-bot` command: `npx ds-bot start`, then `status`, `stop` or `restart`. See [Command line](ds-bot/README.md#command-line).
+To keep that web UI running in the background — so the team stays reachable from a phone — the package also ships a small `ds-bot` command:
+
+```sh
+npm install -g @lininn/ds-bot          # then: ds-bot start
+npx -p @lininn/ds-bot ds-bot start     # or without a global install
+
+ds-bot status    # whether it runs, with the pid, url and log
+ds-bot stop      # stop it
+ds-bot restart   # stop, then start
+```
+
+It boots `dsh --profile web --no-open`; `--port` and `--host` choose the listener, and `--json` prints status as JSON. When `dsh` is not installed, `start` runs this package's pinned DSH release through `npx` and adds the plugin to the profile, so the global install above is all you need. See [Command line](ds-bot/README.md#command-line).
 
 **Docker (NAS, Linux server)**
 
@@ -99,6 +110,10 @@ Settings → **Capabilities** is a shared library of MCP servers, skills and pac
 In **Settings** → **Usage**, you can see token usage by time, by bot and by model.
 
 ![Usage page](docs/images/usage.png)
+
+### Remote control
+
+Settings → **Remote control** lets a phone drive this team. The computer keeps one outbound WebSocket to a relay, so no port is opened here. Sign in on the settings page with a blog account, then open the relay's website on the phone and pick this computer. One account can bind several computers: the phone shows a device list when more than one is online, and **Switch device** in the shell's header returns to it. The public relay is `https://ds.d-1.top`, used when no other address is set; a deployment with its own relay sets `relay.url` or `DS_BOT_RELAY_URL`. Only the phone-safe part of the Bot API is reachable. See [Remote control](ds-bot/README.md#remote-control) and [`relay/`](relay/README.md).
 
 ## Data
 

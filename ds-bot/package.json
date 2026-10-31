@@ -1,6 +1,6 @@
 {
   "name": "@lininn/ds-bot",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "description": "DS Bot: a team of long-lived Bots for DeepSeek Harness, with Main Bots, Bot-to-Bot messages and group chats",
   "keywords": [
     "dsh-plugin",
@@ -59,6 +59,20 @@
     "@deepseek-ai/dsh-tools": "*",
     "@deepseek-ai/dsh-web": "*"
   },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-llm": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-web": {
+      "optional": true
+    }
+  },
   "dsh": {
     "client": {
       "platform": "web"
@@ -66,6 +80,9 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "dsBot": {
+    "verifiedDsh": "0.2.1-rc.5"
   },
   "devDependencies": {
     "esbuild": "0.28.2"

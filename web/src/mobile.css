@@ -1,156 +1,111 @@
-/* The narrow-screen frame. The Bot views keep their own sheets; this file gives them a
-   single column, a full-height chat, and space for a phone's safe areas. */
+/* The phone frame around the PC window's own views (app/ui/src/app.css brings those). On a
+   narrow screen one pane fills the page: the Bot list until a conversation opens, then the
+   conversation, and the back button returns to the list. */
 html, body, #root {
   height: 100%;
   margin: 0;
 }
 
 body {
-  background: var(--bt-canvas, #0f1115);
-  color: var(--bt-ink, #e6e6e6);
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
-.m-app {
-  display: flex;
-  flex-direction: column;
+.dsb-frame[data-mobile] {
+  grid-template-columns: minmax(0, 1fr);
   height: 100%;
-  min-height: 0;
 }
 
-/* The top bar replaces the desktop floating header pill. */
-.m-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 10px;
-  border-bottom: 1px solid var(--bt-line, rgba(255, 255, 255, 0.08));
-  background: var(--bt-canvas, #0f1115);
+.dsb-frame[data-mobile] .dsb-band {
+  display: none;
 }
 
-.m-bar-title {
-  font-weight: 600;
-  font-size: 16px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.dsb-frame[data-mobile][data-view='list'] .dsb-main {
+  display: none;
 }
 
-/* The root bar pushes its action to the far end. */
-.m-bar-root .m-bar-title {
-  flex: 1 1 auto;
-  min-width: 0;
+.dsb-frame[data-mobile][data-view='chat'] .dsb-side {
+  display: none;
 }
 
+/* The safe areas belong to the pane that is showing. */
+.dsb-frame[data-mobile] .dsb-side {
+  padding: env(safe-area-inset-top, 0px) 10px calc(env(safe-area-inset-bottom, 0px) + 6px);
+  border-right: 0;
+}
+
+.dsb-frame[data-mobile] .dsb-side-list {
+  margin: 0;
+  padding: 0;
+}
+
+.dsb-frame[data-mobile] .dsb-main {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* One pane fills the screen, so collapsing the sidebar has nothing to collapse. */
+.dsb-frame[data-mobile] .bt-side-collapse {
+  display: none;
+}
+
+.dsb-frame[data-mobile] .dsb-scroll {
+  padding: 60px 12px 16px;
+}
+
+.dsb-frame[data-mobile] .dsb-composer-root {
+  padding: 0 10px calc(env(safe-area-inset-bottom, 0px) + 10px);
+}
+
+/* Back to the Bot list. */
+.m-back {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 6px);
+  left: 8px;
+  z-index: 9;
+  width: 34px;
+  height: 34px;
+  padding: 0 0 2px;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bt-ink) 6%, transparent);
+  color: var(--bt-ink);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.m-back:active {
+  background: color-mix(in srgb, var(--bt-ink) 12%, transparent);
+}
+
+/* Switch the phone to another computer. */
 .m-switch {
   appearance: none;
-  border: 1px solid var(--bt-line, rgba(255, 255, 255, 0.16));
-  background: transparent;
-  color: inherit;
-  font-size: 13px;
-  line-height: 1;
-  padding: 7px 10px;
+  margin-left: auto;
+  padding: 6px 10px;
+  border: 1px solid var(--bt-line, rgba(20, 20, 20, 0.16));
   border-radius: 8px;
+  background: transparent;
+  color: var(--bt-ink-2, inherit);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
   cursor: pointer;
-  flex: 0 0 auto;
 }
 
 .m-switch:active {
-  background: var(--bt-hover, rgba(255, 255, 255, 0.05));
+  background: color-mix(in srgb, var(--bt-ink) 6%, transparent);
 }
 
-.m-back {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-size: 26px;
-  line-height: 1;
-  padding: 0 6px 2px 0;
-  cursor: pointer;
-}
+/* A touch screen has no hover, so the views' controls need a firm target. */
+@media (pointer: coarse) {
+  .dsb-frame[data-mobile] :is(.bt-row, .bt-tile) {
+    min-height: 44px;
+  }
 
-.m-main {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.m-main-chat {
-  overflow: hidden;
-}
-
-/* The Bot list. */
-.m-list {
-  display: flex;
-  flex-direction: column;
-  padding: 6px 0 calc(env(safe-area-inset-bottom, 0px) + 12px);
-}
-
-.m-list-empty {
-  padding: 24px 16px;
-  opacity: 0.6;
-}
-
-.m-bot {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 14px 16px;
-  border: 0;
-  border-bottom: 1px solid var(--bt-line, rgba(255, 255, 255, 0.08));
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.m-bot:active {
-  background: var(--bt-hover, rgba(255, 255, 255, 0.05));
-}
-
-.m-bot-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-  background: currentColor;
-  opacity: 0.7;
-}
-
-.m-bot-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.m-bot-name {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.m-bot-role {
-  font-size: 13px;
-  opacity: 0.6;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Chat: the shell provides the full-height flex parent Chat expects. */
-.m-main-chat .dsb-chat {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.m-main-chat .dsb-scroll {
-  padding-top: 0;
-}
-
-.m-main-chat .dsb-composer-root {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  .dsb-frame[data-mobile] .m-back {
+    width: 38px;
+    height: 38px;
+  }
 }
