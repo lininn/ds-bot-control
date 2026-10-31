@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DS Bot</string>
+    <string name="address_title">服务器地址</string>
+    <string name="address_save">连接</string>
+    <string name="error_title">打不开这个地址</string>
+    <string name="error_retry">重试</string>
+    <string name="error_address">修改地址</string>
+    <string name="pick_file">选择文件</string>
+</resources>

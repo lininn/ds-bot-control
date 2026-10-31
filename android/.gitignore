@@ -1,0 +1,6 @@
+# Gradle's own state and the build output; nothing here ships.
+.gradle/
+build/
+local.properties
+*.jks
+*.keystore
