@@ -15,6 +15,29 @@ DS Bot 是一个基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 
 ![和 Chief 说一句话，它就把 bot 和群聊建好](docs/images/team.zh.png)
 
+## 快速开始
+
+最快让团队跑起来，并从手机上驱动它：
+
+```sh
+npm install -g @lininn/ds-bot
+ds-bot start          # 在后台启动 dsh Web，并打印访问地址
+```
+
+用浏览器打开它打印的地址。`ds-bot status`、`ds-bot stop`、`ds-bot restart` 用来查看、停止和重启；关掉终端后团队仍在运行。
+
+接下来接上手机：
+
+1. 网页里打开 **设置** → **远程控制**。
+2. 关注微信公众号 **html5开发分享** 获取邀请码，用它注册，再在这个页面用同一个账号登录。
+3. 手机上打开 <https://ds.d-1.top>，登录后从设备列表里选这台电脑。
+
+电脑只向 relay 保持一条出站 WebSocket，本机不开端口；手机只能访问 Bot API 里对手机安全的那部分。
+
+![远程控制是怎么工作的](docs/images/architecture.zh.png)
+
+更想用桌面应用？到 [Releases](https://github.com/lininn/ds-bot-control/releases) 下载，远程控制的步骤一样。
+
 ## 安装
 
 **桌面应用（Windows、macOS、Linux）**
@@ -113,7 +136,7 @@ ds bot 拥有群聊功能。群聊是非常好的多 bot 协作方式，但它�
 
 ### 远程控制
 
-设置 → **远程控制** 可以让手机驱动这个团队。电脑只向 relay 保持一条出站 WebSocket，本机不开端口。在设置页用博客账号登录，然后在手机上打开 relay 的网页，选择这台电脑即可。一个账号可以绑定多台电脑：多台在线时手机会显示设备列表，外壳页头的 **切换设备** 按钮可以回到列表。公共 relay 是 `https://ds.d-1.top`，没有另设地址时就用它；自己部署 relay 时设置 `relay.url` 或 `DS_BOT_RELAY_URL`。手机端只能访问 Bot API 里对手机安全的那部分。详见[远程控制](ds-bot/README.md#remote-control)和 [`relay/`](relay/README.md)。
+设置 → **远程控制** 可以让手机驱动这个团队。电脑只向 relay 保持一条出站 WebSocket，本机不开端口。在设置页用博客账号登录（关注微信公众号 **html5开发分享** 获取邀请码），然后在手机上打开 relay 的网页，选择这台电脑即可。一个账号可以绑定多台电脑：多台在线时手机会显示设备列表，外壳页头的 **切换设备** 按钮可以回到列表。公共 relay 是 `https://ds.d-1.top`，没有另设地址时就用它；自己部署 relay 时设置 `relay.url` 或 `DS_BOT_RELAY_URL`。手机端只能访问 Bot API 里对手机安全的那部分。详见[远程控制](ds-bot/README.md#remote-control)和 [`relay/`](relay/README.md)。
 
 ## 数据
 

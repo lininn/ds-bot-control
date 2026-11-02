@@ -15,6 +15,29 @@ DS Bot is a bot plugin for [DeepSeek Harness](https://github.com/deepseek-ai/dee
 
 ![Say one sentence to Chief, and it sets up the bots and the group chat](docs/images/team.png)
 
+## Quick start
+
+The shortest way to get a team running, and to drive it from your phone:
+
+```sh
+npm install -g @lininn/ds-bot
+ds-bot start          # starts DSH Web in the background and prints its address
+```
+
+Open the address it prints. `ds-bot status`, `ds-bot stop` and `ds-bot restart` manage it; the team keeps running after the terminal closes.
+
+Now connect the phone:
+
+1. In the web UI, open **Settings** → **Remote control**.
+2. Follow the WeChat official account **html5开发分享** to get an invite code, register with it, then sign in on that page with the same account.
+3. On the phone, open <https://ds.d-1.top>, sign in, and pick this computer from the device list.
+
+The computer keeps one outbound WebSocket to the relay and opens no port; the phone reaches only the phone-safe part of the Bot API.
+
+![How remote control works](docs/images/architecture.png)
+
+Prefer the desktop app? Download it from [Releases](https://github.com/lininn/ds-bot-control/releases); the same remote-control steps apply.
+
 ## Install
 
 **Desktop app (Windows, macOS, Linux)**
@@ -113,7 +136,7 @@ In **Settings** → **Usage**, you can see token usage by time, by bot and by mo
 
 ### Remote control
 
-Settings → **Remote control** lets a phone drive this team. The computer keeps one outbound WebSocket to a relay, so no port is opened here. Sign in on the settings page with a blog account, then open the relay's website on the phone and pick this computer. One account can bind several computers: the phone shows a device list when more than one is online, and **Switch device** in the shell's header returns to it. The public relay is `https://ds.d-1.top`, used when no other address is set; a deployment with its own relay sets `relay.url` or `DS_BOT_RELAY_URL`. Only the phone-safe part of the Bot API is reachable. See [Remote control](ds-bot/README.md#remote-control) and [`relay/`](relay/README.md).
+Settings → **Remote control** lets a phone drive this team. The computer keeps one outbound WebSocket to a relay, so no port is opened here. Sign in on the settings page with a blog account (follow the WeChat official account **html5开发分享** for an invite code), then open the relay's website on the phone and pick this computer. One account can bind several computers: the phone shows a device list when more than one is online, and **Switch device** in the shell's header returns to it. The public relay is `https://ds.d-1.top`, used when no other address is set; a deployment with its own relay sets `relay.url` or `DS_BOT_RELAY_URL`. Only the phone-safe part of the Bot API is reachable. See [Remote control](ds-bot/README.md#remote-control) and [`relay/`](relay/README.md).
 
 ## Data
 

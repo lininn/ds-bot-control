@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-label="DS Bot 远程控制是怎么工作的">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a92a1"/>
+    </marker>
+    <style>
+      .title { font: 600 26px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; fill: #14161a; }
+      .subtitle { font: 15px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; fill: #5b6270; }
+      .head { font: 600 19px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; fill: #14161a; }
+      .body { font: 14px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; fill: #5b6270; }
+      .mono { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #4d6bfe; }
+      .edge { font: 13px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; fill: #6b7280; }
+      .box { fill: #ffffff; stroke: #d8dce3; stroke-width: 1.5; rx: 14; }
+      .accent { fill: #eef1fd; stroke: #c3cdf8; stroke-width: 1.5; rx: 14; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="660" fill="#f7f8fa"/>
+
+  <text class="title" x="60" y="62">远程控制：手机驱动你的电脑</text>
+  <text class="subtitle" x="60" y="90">只有一条出站 WebSocket。电脑不开放端口，手机只能访问 Bot API。</text>
+
+  <!-- 手机 -->
+  <rect class="box" x="60" y="220" width="220" height="190"/>
+  <text class="head" x="84" y="256">手机</text>
+  <text class="body" x="84" y="284">浏览器，或</text>
+  <text class="body" x="84" y="306">Android 应用</text>
+  <text class="mono" x="84" y="342">ds.d-1.top</text>
+  <text class="body" x="84" y="372">登录 · 选电脑</text>
+  <text class="body" x="84" y="394">· 聊天</text>
+
+  <!-- 中继 -->
+  <rect class="accent" x="330" y="220" width="300" height="190"/>
+  <text class="head" x="354" y="256">中继（relay）</text>
+  <text class="body" x="354" y="284">ds.d-1.top · nginx + Node</text>
+  <text class="mono" x="354" y="314">/login · /devices</text>
+  <text class="mono" x="354" y="338">/web-dist/&lt;version&gt;/</text>
+  <text class="mono" x="354" y="362">/connector</text>
+  <text class="body" x="354" y="392">静态页面 + 长连接</text>
+
+  <!-- 电脑 -->
+  <rect class="box" x="780" y="200" width="340" height="240"/>
+  <text class="head" x="804" y="236">你的电脑</text>
+  <text class="body" x="804" y="264">DSH + @lininn/ds-bot</text>
+  <text class="body" x="804" y="290">Bot 团队 · 聊天 · 工具</text>
+  <text class="body" x="804" y="316">记忆 · 定时任务</text>
+  <text class="mono" x="804" y="352">relay.js 连接器</text>
+  <text class="body" x="804" y="382">主动连出中继，</text>
+  <text class="body" x="804" y="404">应答手机的请求</text>
+
+  <!-- 博客账号 -->
+  <rect class="box" x="330" y="480" width="300" height="120"/>
+  <text class="head" x="354" y="514">博客账号</text>
+  <text class="body" x="354" y="542">邀请码 → 账号</text>
+  <text class="mono" x="354" y="570">/api/relay/auth · verify</text>
+
+  <!-- 模型 -->
+  <rect class="box" x="780" y="480" width="340" height="120"/>
+  <text class="head" x="804" y="514">模型</text>
+  <text class="body" x="804" y="542">DeepSeek，由 DSH 提供</text>
+  <text class="body" x="804" y="566">每个 Bot 一个模型</text>
+
+  <!-- 连线 -->
+  <line x1="280" y1="315" x2="322" y2="315" stroke="#8a92a1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="edge" x="301" y="300" text-anchor="middle">HTTPS</text>
+
+  <line x1="772" y1="320" x2="638" y2="320" stroke="#8a92a1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="edge" x="705" y="306" text-anchor="middle">出站 WebSocket</text>
+
+  <line x1="480" y1="412" x2="480" y2="472" stroke="#8a92a1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="edge" x="492" y="446">访问令牌</text>
+
+  <line x1="950" y1="442" x2="950" y2="472" stroke="#8a92a1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="edge" x="962" y="464">模型调用</text>
+</svg>

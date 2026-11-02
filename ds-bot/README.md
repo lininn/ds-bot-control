@@ -1,6 +1,31 @@
-# ds-bot
+# DS Bot
 
-The DS Bot plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh). It turns dsh into a team of long-lived Bots that talk to you, to each other and in group chats. See the [project page](../README.md) for an overview, install steps and screenshots.
+[![npm version](https://img.shields.io/npm/v/@lininn/ds-bot)](https://www.npmjs.com/package/@lininn/ds-bot) [![license](https://img.shields.io/badge/license-Apache_2.0-green)](https://github.com/lininn/ds-bot-control/blob/main/LICENSE) [![DSH](https://img.shields.io/badge/DSH-0.2.1--rc.2-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
+
+The bot plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). It turns DSH into a team of long-lived Bots that talk to you, to each other and in group chats — and lets your phone drive the team.
+
+**English** | [中文](#中文)
+
+## Quick start
+
+```sh
+npm install -g @lininn/ds-bot
+ds-bot start          # starts DSH Web in the background and prints its address
+```
+
+Open the address it prints. `ds-bot status`, `ds-bot stop` and `ds-bot restart` manage it; the team keeps running after the terminal closes.
+
+Then connect the phone:
+
+1. In the web UI, open **Settings** → **Remote control**.
+2. Follow the WeChat official account **html5开发分享** to get an invite code, register with it, then sign in on that page with the same account.
+3. On the phone, open <https://ds.d-1.top>, sign in, and pick this computer from the device list.
+
+The computer keeps one outbound WebSocket to the relay and opens no port; the phone reaches only the phone-safe part of the Bot API.
+
+![How remote control works](https://raw.githubusercontent.com/lininn/ds-bot-control/main/docs/images/architecture.png)
+
+The [project page](https://github.com/lininn/ds-bot-control) has the desktop apps, screenshots and the full install steps.
 
 > Early release (v0.1). Features, tools and the saved data format can still change.
 
@@ -35,7 +60,7 @@ Tested with dsh `0.2.1-rc.2` (Web) and `0.2.0-rc.2` (Web and Desktop).
 
 The [project page](../README.md#install) has the full steps for dsh Desktop and dsh Web. In short:
 
-- dsh Desktop: Settings → Plugins → add `@lininn/ds-bot` (npm), a `.tgz` file, or `github:lininn/ds-bot-control#v0.2.4&path:/ds-bot`.
+- dsh Desktop: Settings → Plugins → add `@lininn/ds-bot` (npm), a `.tgz` file, or `github:lininn/ds-bot-control#v0.2.7&path:/ds-bot`.
 - Command line: `dsh plugin --profile desktop add @lininn/ds-bot` (or `--profile web`).
 
 To work on the plugin from a checkout, add it to a dsh profile as a linked dependency and a bundle:
@@ -286,3 +311,28 @@ dev/check.sh                             # all checks (see below)
 ## License
 
 [Apache-2.0](LICENSE)
+
+## 中文
+
+DS Bot 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的 bot 插件。它把 DSH 变成一个由长期在线的 Bot 组成的团队：你可以和 Bot 一对一聊，也可以让几个 Bot 在群聊里协作，还能用手机远程驱动这个团队。
+
+完整的中文介绍、桌面应用下载和安装说明见[中文项目页](https://github.com/lininn/ds-bot-control/blob/main/README.zh.md)。
+
+### 快速开始
+
+```sh
+npm install -g @lininn/ds-bot
+ds-bot start          # 在后台启动 dsh Web，并打印访问地址
+```
+
+用浏览器打开它打印的地址。`ds-bot status`、`ds-bot stop`、`ds-bot restart` 用来查看、停止和重启；关掉终端后团队仍在运行。
+
+接下来接上手机：
+
+1. 网页里打开 **设置** → **远程控制**。
+2. 关注微信公众号 **html5开发分享** 获取邀请码，用它注册，再在这个页面用同一个账号登录。
+3. 手机上打开 <https://ds.d-1.top>，登录后从设备列表里选这台电脑。
+
+电脑只向 relay 保持一条出站 WebSocket，本机不开端口；手机只能访问 Bot API 里对手机安全的那部分。
+
+![远程控制是怎么工作的](https://raw.githubusercontent.com/lininn/ds-bot-control/main/docs/images/architecture.zh.png)

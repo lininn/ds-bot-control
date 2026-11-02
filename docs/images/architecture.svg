@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-label="How DS Bot remote control works">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a92a1"/>
+    </marker>
+    <style>
+      .title { font: 600 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #14161a; }
+      .subtitle { font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #5b6270; }
+      .head { font: 600 19px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #14161a; }
+      .body { font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #5b6270; }
+      .mono { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #4d6bfe; }
+      .edge { font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #6b7280; }
+      .box { fill: #ffffff; stroke: #d8dce3; stroke-width: 1.5; rx: 14; }
+      .accent { fill: #eef1fd; stroke: #c3cdf8; stroke-width: 1.5; rx: 14; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="660" fill="#f7f8fa"/>
+
+  <text class="title" x="60" y="62">Remote control: the phone drives the computer</text>
+  <text class="subtitle" x="60" y="90">One outbound WebSocket. The computer opens no port; the phone reaches only the Bot API.</text>
+
+  <!-- Phone -->
+  <rect class="box" x="60" y="220" width="220" height="190"/>
+  <text class="head" x="84" y="256">Phone</text>
+  <text class="body" x="84" y="284">browser, or the</text>
+  <text class="body" x="84" y="306">Android app</text>
+  <text class="mono" x="84" y="342">ds.d-1.top</text>
+  <text class="body" x="84" y="372">sign in · pick a</text>
+  <text class="body" x="84" y="394">computer · chat</text>
+
+  <!-- Relay -->
+  <rect class="accent" x="330" y="220" width="300" height="190"/>
+  <text class="head" x="354" y="256">Relay</text>
+  <text class="body" x="354" y="284">ds.d-1.top · nginx + Node</text>
+  <text class="mono" x="354" y="314">/login · /devices</text>
+  <text class="mono" x="354" y="338">/web-dist/&lt;version&gt;/</text>
+  <text class="mono" x="354" y="362">/connector</text>
+  <text class="body" x="354" y="392">static shell + sockets</text>
+
+  <!-- Desktop -->
+  <rect class="box" x="780" y="200" width="340" height="240"/>
+  <text class="head" x="804" y="236">Your computer</text>
+  <text class="body" x="804" y="264">DSH + @lininn/ds-bot</text>
+  <text class="body" x="804" y="290">Bot team · chats · tools</text>
+  <text class="body" x="804" y="316">memory · scheduled tasks</text>
+  <text class="mono" x="804" y="352">relay.js connector</text>
+  <text class="body" x="804" y="382">binds out to the relay,</text>
+  <text class="body" x="804" y="404">answers the phone's calls</text>
+
+  <!-- Blog accounts -->
+  <rect class="box" x="330" y="480" width="300" height="120"/>
+  <text class="head" x="354" y="514">Blog accounts</text>
+  <text class="body" x="354" y="542">invite code → account</text>
+  <text class="mono" x="354" y="570">/api/relay/auth · verify</text>
+
+  <!-- Model -->
+  <rect class="box" x="780" y="480" width="340" height="120"/>
+  <text class="head" x="804" y="514">Model</text>
+  <text class="body" x="804" y="542">DeepSeek, served by DSH</text>
+  <text class="body" x="804" y="566">one model per Bot</text>
+
+  <!-- Arrows -->
+  <line x1="280" y1="315" x2="322" y2="315" stroke="#8a92a1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="edge" x="301" y="300" text-anchor="middle">HTTPS</text>
+
+  <line x1="772" y1="320" x2="638" y2="320" stroke="#8a92a1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="edge" x="705" y="306" text-anchor="middle">outbound WebSocket</text>
+
+  <line x1="480" y1="412" x2="480" y2="472" stroke="#8a92a1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="edge" x="492" y="446">access token</text>
+
+  <line x1="950" y1="442" x2="950" y2="472" stroke="#8a92a1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="edge" x="962" y="464">model calls</text>
+</svg>
