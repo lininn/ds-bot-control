@@ -815,7 +815,7 @@ export function install(rt) {
       }
       await rt.save()
     }
-    const agent = await rt.resolveAgent(room.id)
+    const agent = await rt.resolveAgent(rt.relaySessionOf(room))
     agent.followup(createUserMessage({
       content: [{ type: 'text', text: `[Group post from ${sender.name}]\n${text}` }, ...files.map(attachment => ({ type: 'file', attachment }))],
       source: { kind: SOURCE_KIND, form: 'relay', role: 'post', exchangeId: randomUUID(), senderName: sender.name, senderSessionId: sender.id, roomId: room.id, ...extra, ...(logged !== undefined ? { logged } : {}) },
@@ -941,7 +941,7 @@ export function install(rt) {
   async function greetRoom(roomId) {
     const room = rt.roomOf(roomId)
     if (!room?.admin) return
-    const agent = await rt.resolveAgent(room.id)
+    const agent = await rt.resolveAgent(rt.relaySessionOf(room))
     agent.followup(createUserMessage({
       content: [{ type: 'text', text: '[Group chat created]' }],
       source: { kind: SOURCE_KIND, form: 'relay', role: 'kickoff', exchangeId: randomUUID(), senderName: 'You', roomId: room.id },
@@ -958,7 +958,7 @@ export function install(rt) {
     if ((room.paused ?? []).length === 0) return
     room.relays = 0
     await rt.save()
-    const agent = await rt.resolveAgent(room.id)
+    const agent = await rt.resolveAgent(rt.relaySessionOf(room))
     agent.followup(createUserMessage({
       content: [{ type: 'text', text: '[Continue]' }],
       source: { kind: SOURCE_KIND, form: 'relay', role: 'resume', exchangeId: randomUUID(), senderName: 'You', roomId: room.id },

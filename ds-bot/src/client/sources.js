@@ -29,7 +29,12 @@ export function indexRoster(value) {
     for (const id of [...(bot.parts ?? []), bot.sessionId ?? bot.id, bot.id]) byId[id] = bot
   }
   const roomsById = {}
-  for (const room of value.rooms) roomsById[room.id] = room
+  // A group keeps its id; `sessionId` is its current relay Session, which moves on
+  // when the user starts a new conversation there. Both find the group.
+  for (const room of value.rooms) {
+    roomsById[room.id] = room
+    if (room.sessionId !== undefined) roomsById[room.sessionId] = room
+  }
   // The DSH Agent is not a Bot: it indexes by its own id and by each Session it owns.
   const agentsById = {}
   const agentOf = {}

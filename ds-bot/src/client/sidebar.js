@@ -97,11 +97,14 @@ function BotRow({ bot, roster, actions, useSessions, useSessionStatus, useSessio
 }
 
 function RoomRow({ room, roster, actions, useSessions, useSessionStatus, useSessionRetainInfo, useWork, wide, marked }) {
+  // The group's own id names its settings, memory, and running rounds; its current relay
+  // Session carries the Session state (running, unread, retained).
   const id = room.id
-  const fallback = useSessions(list => previewOf(list, id))
+  const sessionId = room.sessionId ?? room.id
+  const fallback = useSessions(list => previewOf(list, sessionId))
   const preview = room.preview?.replace(/\s+/g, ' ').trim() || fallback
-  const active = useSessionRetainInfo(id, info => (info?.retainedBy?.mainView ?? 0) > 0)
-  const unread = useSessionStatus(map => map.get(id)?.completionUnread === true) || (marked && !active)
+  const active = useSessionRetainInfo(sessionId, info => (info?.retainedBy?.mainView ?? 0) > 0)
+  const unread = useSessionStatus(map => map.get(sessionId)?.completionUnread === true) || (marked && !active)
   useMarkedUnread(id, active, marked, actions)
   const approval = useApproval(useWork, entry => entry.roomId === id)
   const members = workKeys(useGroupWork(useWork, rooms => (rooms[id] ?? []).map(entry => ({ id: entry.botId, ...doingOf(entry) }))))
@@ -265,7 +268,7 @@ export function TeamSidebar(props) {
     const stamps = JSON.parse(updated)
     const entries = [
       ...roster.bots.filter(bot => bot.id !== roster.mainBotId).map(bot => ({ kind: 'bot', item: bot, at: stamps[currentPart(bot)] ?? bot.createdAt })),
-      ...roster.rooms.map(room => ({ kind: 'room', item: room, at: stamps[room.id] ?? room.createdAt })),
+      ...roster.rooms.map(room => ({ kind: 'room', item: room, at: stamps[room.sessionId ?? room.id] ?? room.createdAt })),
       // The Agent sorts by its most recent Session, falling back to when it was added.
       ...(roster.agents ?? []).map(agent => ({ kind: 'agent', item: agent, at: Math.max(0, ...agent.sessions.map(id => stamps[id] ?? 0)) || agent.createdAt })),
     ]

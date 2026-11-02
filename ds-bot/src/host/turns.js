@@ -97,7 +97,9 @@ export function install(rt) {
   const roomProgress = new Map()
   /** @type {Map<string, {text:string, botId?:string, name?:string, reportBack?:boolean, kickoff?:boolean, references?:{labels:string[], text:string}[]}[]>} messages a room's next relay posts */
   const roomInbox = new Map()
-  const queueRoomMessage = (roomId, item) => roomInbox.set(roomId, [...(roomInbox.get(roomId) ?? []), item])
+  // The relay reads the inbox by the group's own id, whichever Session relays the group.
+  const inboxKey = id => rt.roomOf(id)?.id ?? id
+  const queueRoomMessage = (roomId, item) => roomInbox.set(inboxKey(roomId), [...(roomInbox.get(inboxKey(roomId)) ?? []), item])
   // Member turns of a group round the user stopped: what they end with stays out of the group.
   const stoppedRoomTurns = new Set()
 
@@ -490,7 +492,7 @@ export function install(rt) {
           // A group's scheduled task reaches the group as the user's message.
           queueRoomMessage(id, { text: reminderText(textOf(event.data.content)) })
         } else if (source?.kind === REFERENCE_KIND && rt.roomOf(id)) {
-          attachReference(roomInbox.get(id), source, textOf(event.data.content))
+          attachReference(roomInbox.get(inboxKey(id)), source, textOf(event.data.content))
         } else if (source?.kind === 'user' || source?.kind === REPLY_KIND) {
           if (rt.roomOf(id) && source.kind === 'user') {
             const content = Array.isArray(event.data.content) ? event.data.content : []

@@ -7,7 +7,10 @@ import { noteClientError } from './diagnostics.js'
 // is done; `partFor` maps a Bot id, or any part of its chat, to its current part.
 export function teamActions({ call, after, partFor, roster, ui, live, cards, heldCards, turnClock }) {
   // A memory is a Bot's or a group chat's; both are opened by id.
-  const memoryOf = id => (roster.getSnapshot().roomsById[id] ? { roomId: id } : { botId: id })
+  const memoryOf = id => {
+    const room = roster.getSnapshot().roomsById[id]
+    return room ? { roomId: room.id } : { botId: id }
+  }
   // The panel on a side chat's view, on the chat the strip tab or menu named.
   const openSideChat = (sessionId, chatId) => {
     ui.set(state => ({ ...state, details: sessionId, view: 'side', side: chatId ?? null, renaming: false, tab: null }))
@@ -74,6 +77,8 @@ export function teamActions({ call, after, partFor, roster, ui, live, cards, hel
     clearQuote: token => ui.set(state => (state.quote?.token === token ? { ...state, quote: null } : state)),
     setFlags: (id, flags) => after(call('set-flags', { id, ...flags })),
     deleteRoom: id => after(call('delete-room', { id })),
+    newRoomConversation: id => after(call('new-room-conversation', { id })),
+    duplicateRoom: id => after(call('duplicate-room', { id })),
     openMenu: (menu) => { ui.set(state => ({ ...state, menu })) },
     closeMenu: () => { ui.set(state => (state.menu ? { ...state, menu: null } : state)) },
     closeOverlay: () => { ui.set(state => ({ ...state, newChat: null, exchange: null, details: state.newChat || state.exchange ? state.details : null })) },

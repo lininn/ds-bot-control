@@ -50,6 +50,19 @@ The desktop app brings its own DSH, so you don't need to install DSH first. Down
 
 At the first start the app asks where to keep its data and the Bots' files, and offers to copy a Bot team from your DSH (it only reads your DSH). Set up a model in its settings. The Windows app and the Linux AppImage update themselves; the macOS app and the Linux deb tell you when a new version is ready to download.
 
+**macOS: opening the app for the first time.** The macOS build is not signed with an Apple Developer ID and is not notarized, so Gatekeeper reports *"Apple cannot verify whether 'DeepSeek Bot' contains malware…"* and refuses to open it straight from Downloads. To open it once:
+
+1. Open **System Settings** → **Privacy & Security**, scroll down to the message about DeepSeek Bot, and select **Open Anyway**, then confirm.
+2. Or Control-click **DeepSeek Bot** in Finder and choose **Open** → **Open**.
+
+If macOS still refuses, clear the download quarantine flag on a build downloaded from this project's Releases:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/DeepSeek Bot.app"
+```
+
+Only download the app from this project's Releases; the command merely tells macOS you have checked it yourself.
+
 **As a plugin in DSH**
 
 First install DSH and set up at least one model in it. DS Bot uses the models from DSH.

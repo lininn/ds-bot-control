@@ -1,6 +1,6 @@
 import { createElement as h, useEffect, useState } from 'react'
 import { isMainOf } from './sources.js'
-import { PlusIcon, ChevronRightIcon } from './icons.js'
+import { PlusIcon, DuplicateIcon, ChevronRightIcon } from './icons.js'
 import { AdminStar, BotAvatar, BotMark, RoomAvatar } from './mark.js'
 import { Card, Row, InlineText, SwitchRow } from './bot-settings.js'
 import { Segmented } from './motion.js'
@@ -68,11 +68,17 @@ function GroupPermission({ room, catalog, update }) {
 export function GroupSettingsForm({ room, roster, actions, run, onDeleted }) {
   const [adding, setAdding] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [confirmingNew, setConfirmingNew] = useState(false)
   useEffect(() => {
     if (!confirming) return undefined
     const timer = setTimeout(() => setConfirming(false), 4000)
     return () => clearTimeout(timer)
   }, [confirming])
+  useEffect(() => {
+    if (!confirmingNew) return undefined
+    const timer = setTimeout(() => setConfirmingNew(false), 4000)
+    return () => clearTimeout(timer)
+  }, [confirmingNew])
   const members = room.members.map(id => roster.byId[id]).filter(Boolean)
   const outside = roster.bots.filter(bot => !room.members.includes(bot.id))
   const admin = roster.byId[room.admin]
@@ -83,6 +89,16 @@ export function GroupSettingsForm({ room, roster, actions, run, onDeleted }) {
   const remove = () => {
     if (!confirming) { setConfirming(true); return }
     void Promise.resolve(run(actions.deleteRoom(room.id))).then((done) => { if (done) onDeleted?.() })
+  }
+  const newConversation = () => {
+    if (!confirmingNew) { setConfirmingNew(true); return }
+    void Promise.resolve(run(actions.newRoomConversation(room.id)))
+      .then((done) => { if (done) { actions.closeSettings(); actions.openSession(room.id) } })
+  }
+  const duplicate = () => {
+    let copy
+    void Promise.resolve(run(actions.duplicateRoom(room.id).then((value) => { copy = value?.room })))
+      .then((done) => { if (done && copy) { actions.closeSettings(); actions.openSession(copy.id) } })
   }
   return h('div', { className: 'bt-bs' },
     h('div', { className: 'bt-bs-hero' },
@@ -140,6 +156,16 @@ export function GroupSettingsForm({ room, roster, actions, run, onDeleted }) {
       h(SwitchRow, { label: t('Pin'), hint: t('Kept above the other chats.'), on: room.pinned === true, onChange: pinned => run(actions.setFlags(room.id, { pinned })) }),
       h(SwitchRow, { label: t('Hide from sidebar'), hint: t('Search still finds it.'), on: room.hidden === true, onChange: hidden => run(actions.setFlags(room.id, { hidden })) })),
     h(Card, { title: t('Manage') },
+      h('button', { type: 'button', className: 'bt-set-row bt-bs-row', 'data-confirm': confirmingNew || undefined, onClick: newConversation },
+        h('span', { className: 'bt-set-copy' },
+          h('span', { className: 'bt-bs-label' }, confirmingNew ? t('Start a new conversation?') : t('New conversation')),
+          h('span', { className: 'bt-set-hint' }, confirmingNew ? t('Click again to start. The current conversation is archived; the group memory is kept.') : t('Starts a fresh conversation here. The current one is archived; the group memory is kept.'))),
+        h('span', { className: 'bt-chevron' }, h(PlusIcon))),
+      h('button', { type: 'button', className: 'bt-set-row bt-bs-row', onClick: duplicate },
+        h('span', { className: 'bt-set-copy' },
+          h('span', { className: 'bt-bs-label' }, t('Duplicate group')),
+          h('span', { className: 'bt-set-hint' }, t('Copies its members and settings into a new group with no conversation and no memory.'))),
+        h('span', { className: 'bt-chevron' }, h(DuplicateIcon))),
       h('button', { type: 'button', className: 'bt-set-row bt-bs-row bt-bs-danger', 'data-confirm': confirming || undefined, onClick: remove },
         h('span', { className: 'bt-set-copy' },
           h('span', { className: 'bt-bs-label' }, confirming ? t('Delete {name}?', { name: room.name }) : t('Delete group')),

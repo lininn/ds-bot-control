@@ -371,7 +371,7 @@ export function install(rt) {
 
   async function retitleRoom(room) {
     try {
-      const agent = await rt.resolveAgent(room.id)
+      const agent = await rt.resolveAgent(rt.relaySessionOf(room))
       await ctx.sessionTitle.rename(agent.session, room.name)
     } catch (error) {
       rt.warn('ds-bot: group title for %s not updated: %s', room.name, error)
@@ -398,17 +398,17 @@ export function install(rt) {
   // member when it has one.
   const defaultAdmin = (members, createdBy) => (members.includes(createdBy) ? createdBy : members.find(rt.isMain) ?? null)
 
-  async function createRoom({ members: memberIds = [], name: roomName, notice, mode, admin, createdBy } = {}) {
+  async function createRoom({ members: memberIds = [], name: roomName, notice, mode, admin, createdBy, workDir, permission, relayLimit } = {}) {
     const members = [...new Set(memberIds)].filter(id => rt.botOf(id))
     checkMembers(members)
     const custom = cleanRoomName(roomName ?? '')
     const adminId = admin !== undefined ? admin : defaultAdmin(members, createdBy)
     if (adminId !== null && !members.includes(adminId)) throw new Error('The admin must be a member of the group')
     if (mode !== undefined && !ROOM_MODES.includes(mode)) throw new Error(`Reply mode must be one of ${ROOM_MODES.join(', ')}`)
-    return holdName('room', custom, () => buildRoom({ members, custom, notice, mode, adminId, createdBy }))
+    return holdName('room', custom, () => buildRoom({ members, custom, notice, mode, adminId, createdBy, workDir, permission, relayLimit }))
   }
 
-  async function buildRoom({ members, custom, notice, mode, adminId, createdBy }) {
+  async function buildRoom({ members, custom, notice, mode, adminId, createdBy, workDir, permission, relayLimit }) {
     const title = custom || autoRoomName(members)
     // The group's own Session only relays, so it stays in the team workspace; the
     // group's folder is for its members' Sessions.
@@ -428,6 +428,9 @@ export function install(rt) {
         admin: lead,
         mode: mode ?? 'admin',
         notice: cleanNotice(notice),
+        ...(workDir !== undefined ? { workDir } : {}),
+        ...(permission !== undefined ? { permission } : {}),
+        ...(relayLimit !== undefined ? { relayLimit } : {}),
         createdAt: Date.now(),
         createdBy: createdBy ?? null,
       }
@@ -564,16 +567,97 @@ export function install(rt) {
     // Before the group's Sessions leave the state, which the archive reads.
     const archived = rt.archiveGroupMemory(room)
     for (const botId of Object.keys(room.sessions ?? {})) rt.dropGroupSession(room, botId)
-    delete state.rooms[id]
-    rt.roomInbox.delete(id)
-    rt.dropGroupLines(id)
+    delete state.rooms[room.id]
+    rt.roomInbox.delete(room.id)
+    rt.dropGroupLines(room.id)
     await archived
     const failed = await saveForDelete()
     // Armed scheduled tasks refuse a plain archive and would keep delivering into
     // the deleted group; the session-stop that stopActivity runs removes them.
-    await ctx.workspaceRegistry.archiveSession(id, { stopActivity: true })
+    await ctx.workspaceRegistry.archiveSession(rt.relaySessionOf(room), { stopActivity: true })
       .catch(error => rt.warn('ds-bot: group chat %s not archived: %s', room.name, error))
     if (failed !== undefined) throw failed
+  }
+
+  // A fresh conversation in a group chat: the group, its members, its settings, and its
+  // memory stay; the relay Session and every member's Session there start over, so the
+  // group reads a clean log again. The earlier Sessions are archived, not deleted.
+  async function newRoomConversation(id) {
+    const room = rt.roomOf(id)
+    if (room === undefined) throw new Error('Unknown group chat')
+    const readOnly = rt.readOnly()
+    if (readOnly !== undefined) throw new Error(readOnly)
+    if (roomBusy(room.id)) throw new Error(`"${room.name}" is in the middle of a round; wait for it to end or stop it before starting a new conversation`)
+    if (Object.values(room.sessions ?? {}).some(sessionId => rt.live.get(sessionId)?.turn !== undefined)) {
+      throw new Error(`"${room.name}" is still working; wait for its replies or stop them before starting a new conversation`)
+    }
+    const old = rt.relaySessionOf(room)
+    const next = await createSession(room.name)
+    // The group may have been deleted while the Session was made.
+    if (rt.roomOf(room.id) !== room) {
+      await ctx.workspaceRegistry.archiveSession(next).catch(() => {})
+      throw new Error('The group chat was removed while its new conversation was being made')
+    }
+    // Members start over from the clean log and their own memory; their earlier Sessions
+    // here are archived rather than kept in the group.
+    for (const botId of Object.keys(room.sessions ?? {})) {
+      const sessionId = room.sessions[botId]
+      delete state.questions[sessionId]
+      if (state.views !== undefined) delete state.views[sessionId]
+      delete state.exchangeTurns[sessionId]
+      rt.dropGroupSession(room, botId)
+    }
+    // A new log and round state; the group memory is keyed by room.id and is kept.
+    room.log = []
+    room.seq = 0
+    room.seen = {}
+    delete room.paused
+    delete room.relays
+    rt.roomInbox.delete(room.id)
+    rt.dropGroupLines(room.id)
+    delete state.switching[old]
+    delete state.questions[old]
+    if (state.views !== undefined) delete state.views[old]
+    delete state.exchangeTurns[old]
+    room.sessionId = next
+    await rt.save()
+    // The old relay Session may still hold armed scheduled tasks; stopActivity clears them.
+    await ctx.workspaceRegistry.archiveSession(old, { stopActivity: true })
+      .catch(error => rt.warn('ds-bot: earlier conversation in %s not archived: %s', room.name, error))
+    return room
+  }
+
+  const roomNameTaken = name => rt.findRooms(name).length > 0 || isHeld('room', name)
+  const freshRoomName = (base) => {
+    const stem = base.slice(0, ROOM_NAME_MAX - 4)
+    if (!roomNameTaken(stem)) return stem
+    let index = 2
+    while (roomNameTaken(`${stem} ${index}`)) index += 1
+    return `${stem} ${index}`
+  }
+
+  // A copy of a group chat: the same members and settings in a new conversation with no
+  // log. Its id is new, so its memory starts empty.
+  async function duplicateRoom(id) {
+    const room = rt.roomOf(id)
+    if (room === undefined) throw new Error('Unknown group chat')
+    const readOnly = rt.readOnly()
+    if (readOnly !== undefined) throw new Error(readOnly)
+    const members = room.members.filter(member => rt.botOf(member))
+    checkMembers(members)
+    // A folder that went away since leaves the copy in the team workspace.
+    const workDir = room.workDir !== undefined && await rt.isFolder(room.workDir) ? room.workDir : undefined
+    // No await from here to createRoom's name check, so two copies at once get different names.
+    return createRoom({
+      members,
+      name: freshRoomName(`${room.name} copy`),
+      notice: room.notice,
+      mode: room.mode,
+      admin: members.includes(room.admin) ? room.admin : null,
+      workDir,
+      permission: room.permission,
+      relayLimit: room.relayLimit,
+    })
   }
 
   // The first Main Bot is the sidebar tile. `replace` gives a Main Bot's place to
@@ -674,6 +758,7 @@ export function install(rt) {
   Object.assign(rt, {
     ensureWorkspace, keepTeamFolder, createSession, createBot, duplicateBot, updateBot, setFlags,
     roomBusy, autoRoomName, retitleRoom, createRoom, updateRoom, deleteRoom,
+    newRoomConversation, duplicateRoom,
     setMain, deleteBot, bootstrap, dropKickoff,
   })
 }

@@ -339,7 +339,12 @@ export function install(rt) {
   }, 'ds-bot: state lock')
 
   const botOf = id => (id === undefined ? undefined : own(state.bots, id))
-  const roomOf = id => (id === undefined ? undefined : own(state.rooms, id))
+  // A group keeps its id for as long as it exists; the Session that relays it moves on
+  // when the user starts a new conversation there. `room.sessionId` is the current one.
+  /** @type {Map<string, any>} */
+  const roomBySession = new Map()
+  const relaySessionOf = room => room?.sessionId ?? room?.id
+  const roomOf = id => (id === undefined ? undefined : own(state.rooms, id) ?? roomBySession.get(id))
   const isMain = id => id !== undefined && state.mainBotIds.includes(id)
 
   // Group Sessions. A member speaks in each group from a hidden Session of its own,
@@ -363,11 +368,13 @@ export function install(rt) {
     chatOwners.clear()
     groupOwners.clear()
     pastOwners.clear()
+    roomBySession.clear()
     for (const bot of Object.values(state.bots)) {
       for (const segment of bot.segments ?? []) pastOwners.set(segment.sessionId, { botId: bot.id })
       chatOwners.set(chatOf(bot.id), bot.id)
     }
     for (const room of Object.values(state.rooms)) {
+      roomBySession.set(relaySessionOf(room), room)
       for (const [botId, segments] of Object.entries(room.segments ?? {})) {
         for (const segment of segments) pastOwners.set(segment.sessionId, { botId, roomId: room.id })
       }
@@ -424,7 +431,7 @@ export function install(rt) {
 
   Object.assign(rt, {
     state, load, save, refresh, readOnly, own,
-    botOf, roomOf, isMain, chatOf, selfOf, isBotSession,
+    botOf, roomOf, isMain, chatOf, selfOf, isBotSession, relaySessionOf,
     chatOwners, groupOwners, pastOwners,
     groupSessionsOf, dropGroupSession, retireGroupSession, findBot, findRooms, isAdminOf,
   })

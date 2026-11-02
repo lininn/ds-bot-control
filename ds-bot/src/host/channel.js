@@ -50,7 +50,7 @@ export function install(rt) {
     rooms: Object.values(state.rooms).map(({ log, seen, lateRounds, relays, sessions, segments, ...room }) => {
       const parts = [...Object.values(sessions ?? {}), ...Object.values(segments ?? {}).flat().map(segment => segment.sessionId)]
       const last = (log ?? []).filter(line => line.kind === undefined).at(-1)
-      return { ...room, relayLimitDefault: defaultRelayLimit(room), parts, ...(last ? { preview: last.who === 'User' ? last.text : `${last.who}：${last.text}` } : {}) }
+      return { ...room, sessionId: rt.relaySessionOf(room), relayLimitDefault: defaultRelayLimit(room), parts, ...(last ? { preview: last.who === 'User' ? last.text : `${last.who}：${last.text}` } : {}) }
     }),
     exchangeTurns: state.exchangeTurns,
     questions: state.questions,
@@ -222,8 +222,10 @@ export function install(rt) {
         case 'usage':
           await rt.load()
           return ok(await rt.usageView({ timeZone: typeof body.timeZone === 'string' ? body.timeZone.slice(0, 64) : undefined }))
-        case 'room-progress':
-          return ok([...rt.roomProgress.entries()].filter(([, entry]) => entry.roomId === body.roomId).map(([callId, entry]) => ({ callId, replies: entry.replies, speaking: entry.speaking ?? null })))
+        case 'room-progress': {
+          const id = rt.roomOf(body.roomId)?.id ?? body.roomId
+          return ok([...rt.roomProgress.entries()].filter(([, entry]) => entry.roomId === id).map(([callId, entry]) => ({ callId, replies: entry.replies, speaking: entry.speaking ?? null })))
+        }
         case 'create-bot': {
           await rt.bootstrap()
           const bot = await rt.createBot({ name: body.name, role: body.role, color: body.color, instructions: body.instructions, brief: body.brief, avatar: body.avatar, model: body.model, effort: body.effort, workDir: body.workDir })
@@ -316,6 +318,16 @@ export function install(rt) {
           await rt.load()
           await rt.deleteRoom(body.id)
           return ok(view())
+        case 'new-room-conversation': {
+          await rt.load()
+          const room = await rt.newRoomConversation(body.id)
+          return ok({ room: view().rooms.find(entry => entry.id === room.id) })
+        }
+        case 'duplicate-room': {
+          await rt.load()
+          const room = await rt.duplicateRoom(body.id)
+          return ok({ room: view().rooms.find(entry => entry.id === room.id) })
+        }
         case 'approval-answer':
           rt.answerApproval(body.id, body.choice)
           return ok(true)
@@ -426,9 +438,12 @@ export function install(rt) {
           const text = String(body.text ?? '').trim()
           if (text === '' || typeof body.sessionId !== 'string') return fail('Nothing to send', 'bot/invalid')
           await rt.load()
-          // A Bot id or an earlier part of its own chat means the current part.
+          // A Bot id or an earlier part of its own chat means the current part; a group
+          // id means the group's current relay Session.
           const past = rt.pastOwners.get(body.sessionId)
-          const sessionId = rt.botOf(body.sessionId) ? rt.chatOf(body.sessionId) : past && past.roomId === undefined ? rt.chatOf(past.botId) : body.sessionId
+          const room = rt.roomOf(body.sessionId)
+          const sessionId = room !== undefined ? rt.relaySessionOf(room)
+            : rt.botOf(body.sessionId) ? rt.chatOf(body.sessionId) : past && past.roomId === undefined ? rt.chatOf(past.botId) : body.sessionId
           await rt.ensureCapabilities(sessionId)
           await ctx.sessionController.prompt({
             requestId: randomUUID(),

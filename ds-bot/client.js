@@ -521,6 +521,12 @@ var ZH = {
   "Rename Bot": "重命名 Bot",
   "Group settings": "群设置",
   "Rename group": "重命名群聊",
+  "New conversation": "新建对话",
+  "Duplicate group": "复制群聊",
+  "Start a new conversation?": "开始新对话？",
+  "Click again to start. The current conversation is archived; the group memory is kept.": "再点一次开始。当前对话会被归档，群聊记忆保留。",
+  "Starts a fresh conversation here. The current one is archived; the group memory is kept.": "在这里开始一段新对话。当前对话会被归档，群聊记忆保留。",
+  "Copies its members and settings into a new group with no conversation and no memory.": "复制成员和设置到新群聊，不带对话记录和记忆。",
   "Copy conversation ID": "复制对话 ID",
   "Hide from sidebar": "从侧栏隐藏",
   "{name} actions": "{name} 的操作",
@@ -1520,7 +1526,10 @@ function indexRoster(value) {
     for (const id of [...bot.parts ?? [], bot.sessionId ?? bot.id, bot.id]) byId[id] = bot;
   }
   const roomsById = {};
-  for (const room2 of value.rooms) roomsById[room2.id] = room2;
+  for (const room2 of value.rooms) {
+    roomsById[room2.id] = room2;
+    if (room2.sessionId !== void 0) roomsById[room2.sessionId] = room2;
+  }
   const agentsById = {};
   const agentOf = {};
   for (const agent of value.agents ?? []) {
@@ -1547,7 +1556,10 @@ function countCards(state, sessionId, callIds, delta) {
 
 // src/client/team-actions.js
 function teamActions({ call: call2, after, partFor, roster, ui: ui2, live, cards, heldCards, turnClock }) {
-  const memoryOf = (id) => roster.getSnapshot().roomsById[id] ? { roomId: id } : { botId: id };
+  const memoryOf = (id) => {
+    const room2 = roster.getSnapshot().roomsById[id];
+    return room2 ? { roomId: room2.id } : { botId: id };
+  };
   const openSideChat = (sessionId, chatId) => {
     ui2.set((state) => ({ ...state, details: sessionId, view: "side", side: chatId ?? null, renaming: false, tab: null }));
   };
@@ -1639,6 +1651,8 @@ function teamActions({ call: call2, after, partFor, roster, ui: ui2, live, cards
     clearQuote: (token) => ui2.set((state) => state.quote?.token === token ? { ...state, quote: null } : state),
     setFlags: (id, flags) => after(call2("set-flags", { id, ...flags })),
     deleteRoom: (id) => after(call2("delete-room", { id })),
+    newRoomConversation: (id) => after(call2("new-room-conversation", { id })),
+    duplicateRoom: (id) => after(call2("duplicate-room", { id })),
     openMenu: (menu) => {
       ui2.set((state) => ({ ...state, menu }));
     },
@@ -8646,10 +8660,11 @@ function BotRow({ bot, roster, actions, useSessions, useSessionStatus, useSessio
 }
 function RoomRow({ room: room2, roster, actions, useSessions, useSessionStatus, useSessionRetainInfo, useWork, wide, marked }) {
   const id = room2.id;
-  const fallback = useSessions((list) => previewOf(list, id));
+  const sessionId = room2.sessionId ?? room2.id;
+  const fallback = useSessions((list) => previewOf(list, sessionId));
   const preview = room2.preview?.replace(/\s+/g, " ").trim() || fallback;
-  const active = useSessionRetainInfo(id, (info) => (info?.retainedBy?.mainView ?? 0) > 0);
-  const unread = useSessionStatus((map) => map.get(id)?.completionUnread === true) || marked && !active;
+  const active = useSessionRetainInfo(sessionId, (info) => (info?.retainedBy?.mainView ?? 0) > 0);
+  const unread = useSessionStatus((map) => map.get(sessionId)?.completionUnread === true) || marked && !active;
   useMarkedUnread(id, active, marked, actions);
   const approval = useApproval(useWork, (entry) => entry.roomId === id);
   const members = workKeys(useGroupWork(useWork, (rooms) => (rooms[id] ?? []).map((entry) => ({ id: entry.botId, ...doingOf(entry) }))));
@@ -8864,7 +8879,7 @@ function TeamSidebar(props) {
     const stamps = JSON.parse(updated);
     const entries2 = [
       ...roster.bots.filter((bot) => bot.id !== roster.mainBotId).map((bot) => ({ kind: "bot", item: bot, at: stamps[currentPart(bot)] ?? bot.createdAt })),
-      ...roster.rooms.map((room2) => ({ kind: "room", item: room2, at: stamps[room2.id] ?? room2.createdAt })),
+      ...roster.rooms.map((room2) => ({ kind: "room", item: room2, at: stamps[room2.sessionId ?? room2.id] ?? room2.createdAt })),
       // The Agent sorts by its most recent Session, falling back to when it was added.
       ...(roster.agents ?? []).map((agent) => ({ kind: "agent", item: agent, at: Math.max(0, ...agent.sessions.map((id) => stamps[id] ?? 0)) || agent.createdAt }))
     ];
@@ -9834,7 +9849,7 @@ function chatRows(roster, list, sessionId) {
   });
   const team = /* @__PURE__ */ new Set([
     ...roster.bots.flatMap((bot) => [bot.id, currentPart(bot), ...bot.parts ?? []]),
-    ...roster.rooms.flatMap((room2) => [room2.id, ...room2.parts ?? []])
+    ...roster.rooms.flatMap((room2) => [room2.id, room2.sessionId ?? room2.id, ...room2.parts ?? []])
   ]);
   const others = (list?.ids ?? []).map((id) => byId[id]).filter((row) => row !== void 0 && row.id !== sessionId && !team.has(row.id) && row.origin !== "subagent" && row.blank !== true).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)).slice(0, OTHER_CHATS_MAX).map((row) => ({ sessionId: row.id, label: row.displayTitle || row.title || row.id, updatedAt: row.updatedAt }));
   return [...bots, ...others];
@@ -13642,11 +13657,17 @@ function GroupPermission({ room: room2, catalog, update }) {
 function GroupSettingsForm({ room: room2, roster, actions, run: run2, onDeleted }) {
   const [adding, setAdding] = (0, import_react33.useState)(false);
   const [confirming, setConfirming] = (0, import_react33.useState)(false);
+  const [confirmingNew, setConfirmingNew] = (0, import_react33.useState)(false);
   (0, import_react33.useEffect)(() => {
     if (!confirming) return void 0;
     const timer = setTimeout(() => setConfirming(false), 4e3);
     return () => clearTimeout(timer);
   }, [confirming]);
+  (0, import_react33.useEffect)(() => {
+    if (!confirmingNew) return void 0;
+    const timer = setTimeout(() => setConfirmingNew(false), 4e3);
+    return () => clearTimeout(timer);
+  }, [confirmingNew]);
   const members = room2.members.map((id) => roster.byId[id]).filter(Boolean);
   const outside = roster.bots.filter((bot) => !room2.members.includes(bot.id));
   const admin = roster.byId[room2.admin];
@@ -13664,6 +13685,29 @@ function GroupSettingsForm({ room: room2, roster, actions, run: run2, onDeleted 
     }
     void Promise.resolve(run2(actions.deleteRoom(room2.id))).then((done) => {
       if (done) onDeleted?.();
+    });
+  };
+  const newConversation = () => {
+    if (!confirmingNew) {
+      setConfirmingNew(true);
+      return;
+    }
+    void Promise.resolve(run2(actions.newRoomConversation(room2.id))).then((done) => {
+      if (done) {
+        actions.closeSettings();
+        actions.openSession(room2.id);
+      }
+    });
+  };
+  const duplicate = () => {
+    let copy2;
+    void Promise.resolve(run2(actions.duplicateRoom(room2.id).then((value) => {
+      copy2 = value?.room;
+    }))).then((done) => {
+      if (done && copy2) {
+        actions.closeSettings();
+        actions.openSession(copy2.id);
+      }
     });
   };
   return (0, import_react33.createElement)(
@@ -13773,6 +13817,28 @@ function GroupSettingsForm({ room: room2, roster, actions, run: run2, onDeleted 
     (0, import_react33.createElement)(
       Card,
       { title: t("Manage") },
+      (0, import_react33.createElement)(
+        "button",
+        { type: "button", className: "bt-set-row bt-bs-row", "data-confirm": confirmingNew || void 0, onClick: newConversation },
+        (0, import_react33.createElement)(
+          "span",
+          { className: "bt-set-copy" },
+          (0, import_react33.createElement)("span", { className: "bt-bs-label" }, confirmingNew ? t("Start a new conversation?") : t("New conversation")),
+          (0, import_react33.createElement)("span", { className: "bt-set-hint" }, confirmingNew ? t("Click again to start. The current conversation is archived; the group memory is kept.") : t("Starts a fresh conversation here. The current one is archived; the group memory is kept."))
+        ),
+        (0, import_react33.createElement)("span", { className: "bt-chevron" }, (0, import_react33.createElement)(PlusIcon))
+      ),
+      (0, import_react33.createElement)(
+        "button",
+        { type: "button", className: "bt-set-row bt-bs-row", onClick: duplicate },
+        (0, import_react33.createElement)(
+          "span",
+          { className: "bt-set-copy" },
+          (0, import_react33.createElement)("span", { className: "bt-bs-label" }, t("Duplicate group")),
+          (0, import_react33.createElement)("span", { className: "bt-set-hint" }, t("Copies its members and settings into a new group with no conversation and no memory."))
+        ),
+        (0, import_react33.createElement)("span", { className: "bt-chevron" }, (0, import_react33.createElement)(DuplicateIcon))
+      ),
       (0, import_react33.createElement)(
         "button",
         { type: "button", className: "bt-set-row bt-bs-row bt-bs-danger", "data-confirm": confirming || void 0, onClick: remove },
@@ -16347,6 +16413,14 @@ function ContextMenu({ menu, roster, actions, leaving = false }) {
       bot ? [t("Edit Bot"), GearIcon, () => actions.openSettings("bots", bot.id)] : null,
       room2 ? [t("Group settings"), GearIcon, () => actions.openSettings("groups", room2.id)] : null,
       room2 ? [t("Rename group"), PencilIcon, () => actions.renameBot(room2.id)] : null,
+      room2 ? [t("New conversation"), PlusIcon, async () => {
+        const done = await actions.newRoomConversation(room2.id);
+        if (done) actions.openSession(room2.id);
+      }] : null,
+      room2 ? [t("Duplicate group"), DuplicateIcon, async () => {
+        const { room: copy2 } = await actions.duplicateRoom(room2.id);
+        if (copy2) actions.openSession(copy2.id);
+      }] : null,
       bot ? [t("Duplicate"), DuplicateIcon, async () => {
         const copy2 = await actions.duplicateBot(bot.id);
         actions.openSession(copy2.id);
@@ -16354,7 +16428,7 @@ function ContextMenu({ menu, roster, actions, leaving = false }) {
       bot && !isMainBot ? [t("Make Main Bot"), StarLineIcon, () => actions.setMain(bot.id, true)] : null,
       bot && isMainBot && mainCount > 1 ? [t("Remove Main Bot role"), StarLineIcon, () => actions.setMain(bot.id, false)] : null
     ],
-    [[t("Copy conversation ID"), CopyIcon, () => navigator.clipboard?.writeText(bot ? currentPart(bot) : menu.id)]],
+    [[t("Copy conversation ID"), CopyIcon, () => navigator.clipboard?.writeText(bot ? currentPart(bot) : room2 ? room2.sessionId ?? room2.id : menu.id)]],
     [
       isMainBot ? null : [t("Hide from sidebar"), HideIcon, () => actions.setFlags(menu.id, { hidden: true })],
       isMainBot ? null : [room2 ? t("Delete group") : t("Delete"), TrashIcon, () => bot ? actions.deleteBot(bot.id) : actions.deleteRoom(menu.id), true]
@@ -19469,7 +19543,7 @@ function apply(ctx) {
     for (const id of pendingAdopt.keys()) {
       if (roster.getSnapshot().agentOf[id] !== void 0 || listed[id] === void 0) pendingAdopt.delete(id);
     }
-    for (const id of [...value.bots.map(currentPart), ...value.rooms.map((room2) => room2.id)]) {
+    for (const id of [...value.bots.map(currentPart), ...value.rooms.map((room2) => room2.sessionId ?? room2.id)]) {
       if (refreshed.has(id)) continue;
       refreshed.add(id);
       void Promise.resolve(ctx.sessions.refreshProjections?.(id)).catch(quietly("refresh projections"));
@@ -19687,8 +19761,11 @@ function apply(ctx) {
     return value;
   });
   const partFor = (id) => {
-    const bot = roster.getSnapshot().byId[id];
-    return bot ? currentPart(bot) : id;
+    const snapshot = roster.getSnapshot();
+    const bot = snapshot.byId[id];
+    if (bot) return currentPart(bot);
+    const room2 = snapshot.roomsById[id];
+    return room2 ? room2.sessionId ?? room2.id : id;
   };
   const agentSessions = (agentId) => {
     const ids = [...roster.getSnapshot().agentsById[agentId]?.sessions ?? []];

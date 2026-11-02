@@ -50,6 +50,19 @@ ds-bot start          # 在后台启动 dsh Web，并打印访问地址
 
 第一次打开时，App 会问数据和 Bot 的文件放在哪里，并可以从你的 dsh 复制 Bot 团队（只读取你的 dsh，不改它）。在 App 的设置里配好模型就能用。Windows 版和 Linux 的 AppImage 会自动更新；macOS 版和 Linux 的 deb 有新版本时会提示你下载。
 
+**macOS 首次打开**：macOS 版没有使用 Apple Developer ID 签名，也没有公证，因此 Gatekeeper 会提示 *“Apple 无法验证‘DeepSeek Bot’是否包含可能危害 Mac 安全或泄漏隐私的恶意软件”*，并拒绝直接从“下载”里打开。打开一次的方法：
+
+1. 打开 **系统设置** → **隐私与安全性**，向下找到关于 DeepSeek Bot 的提示，点 **仍要打开**，再确认。
+2. 或者在 Finder 里按住 Control 点击 **DeepSeek Bot**，选 **打开** → **打开**。
+
+如果仍然被拒绝，对从本项目 Releases 下载的安装包清除隔离标记：
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/DeepSeek Bot.app"
+```
+
+请只从本项目的 Releases 下载；这条命令只是告诉 macOS 你已确认过这个 App。
+
 **作为 dsh 插件**
 
 先装好 dsh，并在 dsh 里配好至少一个模型。ds bot 直接使用 dsh 里的模型。
