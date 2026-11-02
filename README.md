@@ -37,7 +37,7 @@ First install DSH and set up at least one model in it. DS Bot uses the models fr
 2. In **Package name or address**, enter `@lininn/ds-bot`. In mainland China, set **Registry** to **Mainland China mirror**.
 3. Select **Install**, then **Enable now**. If DSH says the change takes effect at the next start, quit DSH completely and open it again.
 
-If npm is not reachable, in step 2 you can also enter the full path of `lininn-ds-bot-0.2.4.tgz` downloaded from [Releases](https://github.com/lininn/ds-bot-control/releases), or `github:lininn/ds-bot-control#v0.2.4&path:/ds-bot` (needs Git).
+If npm is not reachable, in step 2 you can also enter the full path of `lininn-ds-bot-0.2.7.tgz` downloaded from [Releases](https://github.com/lininn/ds-bot-control/releases), or `github:lininn/ds-bot-control#v0.2.7&path:/ds-bot` (needs Git).
 
 Coming from the older `ds-bot` package: on the Plugins page, remove `ds-bot` and add `@lininn/ds-bot` again. The Bots, chats and memory stay.
 

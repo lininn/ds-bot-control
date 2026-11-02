@@ -37,7 +37,7 @@ DS Bot 是一个基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepsee
 2. **包名或地址** 填 `@lininn/ds-bot`。在中国大陆，**安装源** 选 **中国大陆镜像源**。
 3. 点 **安装**，再点 **立即启用**。如果提示“下次启动生效”，完全退出 dsh 再打开。
 
-连不上 npm 时，第 2 步也可以填 [Releases](https://github.com/lininn/ds-bot-control/releases) 里下载的 `lininn-ds-bot-0.2.4.tgz` 的完整路径，或者 `github:lininn/ds-bot-control#v0.2.4&path:/ds-bot`（需要装 Git）。
+连不上 npm 时，第 2 步也可以填 [Releases](https://github.com/lininn/ds-bot-control/releases) 里下载的 `lininn-ds-bot-0.2.7.tgz` 的完整路径，或者 `github:lininn/ds-bot-control#v0.2.7&path:/ds-bot`（需要装 Git）。
 
 从旧的 `ds-bot` 包升级：在插件页移除 `ds-bot`，再添加 `@lininn/ds-bot`。Bot、聊天和记忆都会保留。
 

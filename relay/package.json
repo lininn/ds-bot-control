@@ -1,6 +1,6 @@
 {
   "name": "@lininn/ds-relay",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "private": true,
   "description": "Relay that lets a phone control a DS Bot desktop app",
   "type": "module",

@@ -2,6 +2,17 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
+## [0.2.7] - 2026-11-02
+
+### Added
+
+- **Android app.** `android/` is a WebView around the phone page the relay serves, so the phone gets an icon and a window instead of a browser tab. The relay address is kept on the device and asked once on the first run, links to other origins open in the browser, the back button walks the page's history, and the chat's attach button opens the system file picker. `android.yml` builds the APK on a push under `android/` or on a dispatch, and a release attaches it. See [android](android/README.md).
+- A dry run of the release workflow keeps the built phone shell as an artifact next to the desktop installers, so the page can be deployed to a relay without publishing.
+
+### Changed
+
+- **The phone page is the desktop window's own views.** The shell mounts the same sidebar, header, chat and overlays the desktop window loads, and only adds the narrow layout: one pane at a time, a back button, safe areas, touch sizes. The Bots, their details panel, settings and group chats now look and behave as they do on the desktop instead of a separate mobile list.
+
 ## [0.2.6] - 2026-10-30
 
 ### Fixed
