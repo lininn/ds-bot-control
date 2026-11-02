@@ -3,6 +3,9 @@
 import { spawn } from 'node:child_process'
 
 const STDERR_TAIL_CHARS = 8 * 1024
+// The Host sends one of these; a long silence means its event loop is stuck.
+const HEARTBEAT_MS = 5_000
+const SILENCE_MS = 45_000
 
 // The web server prints its launch URL, and the launch token in it opens the Host.
 const redact = (text) => text.replace(/([?&]token=)[^&\s]+/gu, '$1<hidden>')
@@ -21,6 +24,8 @@ export class HostProcess {
   #stopping = false
   #failed = false
   #messageListeners = new Set()
+  #lastSeen = 0
+  #watchdog
 
   /**
    * @param {{ entry: string, cwd: string, env: NodeJS.ProcessEnv, pnpm: string, onFailure: (error: Error) => void }} options
@@ -39,6 +44,9 @@ export class HostProcess {
         cwd, env: { ...env, ELECTRON_RUN_AS_NODE: '1' }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
       })
       this.#child = child
+      this.#lastSeen = Date.now()
+      this.#watchdog = setInterval(() => { this.#watch() }, HEARTBEAT_MS)
+      this.#watchdog.unref?.()
       child.stdout.setEncoding('utf8')
       child.stderr.setEncoding('utf8')
       child.stdout.on('data', (chunk) => { process.stdout.write(redact(chunk)) })
@@ -47,14 +55,17 @@ export class HostProcess {
         this.#stderr = (this.#stderr + chunk).slice(-STDERR_TAIL_CHARS)
       })
       child.on('message', (message) => {
+        this.#lastSeen = Date.now()
+        if (message?.type === 'heartbeat') return
         for (const listener of this.#messageListeners) listener(message)
         if (message?.type === 'ready') resolve({ url: message.url, injections: message.injections })
         else if (message?.type === 'checked') resolve({ unreadable: message.unreadable })
         else if (message?.type === 'fatal') this.#fail(new Error(message.message), reject)
       })
-      child.once('error', (error) => { this.#fail(error, reject) })
+      child.once('error', (error) => { clearInterval(this.#watchdog); this.#fail(error, reject) })
       this.#exit = new Promise((done) => {
         child.once('close', (code) => {
+          clearInterval(this.#watchdog)
           const tail = redact(this.#stderr.trim())
           this.#fail(new Error(`The DSH Host stopped (exit ${String(code)})${tail === '' ? '' : `:\n${tail}`}`), reject)
           done()
@@ -74,12 +85,22 @@ export class HostProcess {
   /** Ask the Host to shut down, then end it if it does not exit in time. */
   async stop() {
     const child = this.#child
+    clearInterval(this.#watchdog)
     if (child === undefined) return
     this.#stopping = true
     if (child.connected) child.send({ type: 'shutdown' }, (error) => { if (error) console.error(error) })
     if (!await settlesWithin(this.#exit, 10_000)) child.kill()
     if (!await settlesWithin(this.#exit, 5_000)) child.kill('SIGKILL')
     this.#child = undefined
+  }
+
+  // A Host that stopped answering is ended, and the close that follows reports the failure.
+  #watch() {
+    if (this.#stopping || this.#failed || this.#lastSeen === 0) return
+    if (Date.now() - this.#lastSeen < SILENCE_MS) return
+    this.#lastSeen = 0
+    console.error('DeepSeek Bot: the Host stopped answering; ending it.')
+    this.#child?.kill('SIGKILL')
   }
 
   #fail(error, reject) {

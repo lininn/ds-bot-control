@@ -20,6 +20,7 @@ import { canonicalExecPath } from './canonical-path.mjs'
 import { chooseLocations, localeText, programFolder, saveLocations, text } from './first-run.mjs'
 import { hostPort } from './host-port.mjs'
 import { HostProcess } from './host-process.mjs'
+import { installBundle, installDecision, installPlan, openBundle } from './install-app.mjs'
 import { copySessions, findTeam, importTeam, teamInUse, userDshHome } from './import.mjs'
 import { copyData, moveProblem } from './move-data.mjs'
 import { CHECK_PROFILE, PROFILE } from './profile.mjs'
@@ -60,6 +61,8 @@ const trayIconFile = () => join(assets, process.platform === 'win32' ? 'tray.ico
 // Windows 11 draws Mica behind the page; mica.css lets it through the sidebar.
 const mica = micaAvailable(process.platform, release())
 if (process.env.DS_BOT_SHELL_DATA) app.setPath('userData', process.env.DS_BOT_SHELL_DATA)
+// A macOS app opened from its download installs itself before it starts; see install-app.mjs.
+const pendingInstall = installPlan({ isPackaged: app.isPackaged, execPath: process.execPath })
 
 let mainWindow
 let host
@@ -129,7 +132,9 @@ app.once('will-quit', () => { shell.dispose(); botViews.dispose(); updates?.stop
 // canonical path: the lock below and every path the Host sees then agree with the long
 // form, and the profile patch layer stops mixing the two.
 const canonical = app.isPackaged ? canonicalExecPath(process.execPath) : undefined
-if (canonical !== undefined) {
+if (pendingInstall !== undefined) {
+  void installAndRelaunch(pendingInstall)
+} else if (canonical !== undefined) {
   app.relaunch({ execPath: canonical, args: process.argv.slice(1) })
   app.exit(0)
 } else if (!app.requestSingleInstanceLock()) {
@@ -168,6 +173,28 @@ function stopHost() {
   stopping = true
   hostStop ??= (host?.stop() ?? Promise.resolve()).catch((error) => { console.error(error) }).finally(() => { stopped = true })
   return hostStop
+}
+
+// The first start of a downloaded copy: copy it into Applications and open that copy. This
+// process ends; the window afterwards belongs to the installed app.
+async function installAndRelaunch(plan) {
+  try {
+    const decision = await installDecision(plan, { version: app.getVersion() })
+    if (decision.action === 'busy') {
+      await app.whenReady()
+      dialog.showErrorBox('DeepSeek Bot', text().installBusy(decision.target))
+      app.exit(0)
+      return
+    }
+    const target = decision.action === 'open' ? decision.target : await installBundle(decision)
+    await openBundle(target)
+    app.exit(0)
+  } catch (error) {
+    console.error(error)
+    await app.whenReady()
+    dialog.showErrorBox('DeepSeek Bot', text().installFailed(error instanceof Error ? error.message : String(error)))
+    app.exit(1)
+  }
 }
 
 async function start() {
