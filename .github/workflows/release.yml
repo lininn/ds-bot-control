@@ -34,8 +34,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Check and publish
+  # Everything a release must satisfy before anything is built or published: the tag matches
+  # the version, one version across the plugin, the app and the shell, and the test suite
+  # passes. The packaging jobs need only this, so a registry that refuses a publish cannot
+  # hide the installers.
+  check:
+    name: Check the release
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -50,8 +54,6 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      # Trusted Publishing needs npm 11.5.1 or later.
-      - run: npm install -g npm@11.6.2 --no-fund --no-audit
 
       - name: Check the tag and the branch
         if: github.event_name == 'release'
@@ -91,18 +93,31 @@ jobs:
       - run: node scripts/build-client.mjs --check
       - run: npm run lint
 
+  publish:
+    name: Publish to npm
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: ds-bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # Trusted Publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@11.6.2 --no-fund --no-audit
+      - run: npm ci --no-fund --no-audit
+
       - name: Pack (dry run)
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run
         run: npm pack --dry-run
 
-      - name: Publish
-        if: github.event_name == 'release' || (!inputs.dry_run && github.ref == 'refs/heads/main')
-        run: |
-          tag="$(node -p "require('./package.json').version.includes('-') ? 'next' : 'latest'")"
-          echo "Publishing $(node -p "require('./package.json').version") with the npm tag $tag"
-          npm publish --provenance --access public --tag "$tag"
-
-      # The release keeps the package file for installs without npm.
+      # The release keeps the package file for installs without npm. It is attached before the
+      # publish, so a registry that refuses the version still leaves a usable release.
       - name: Attach the package to the release
         if: github.event_name == 'release'
         env:
@@ -112,12 +127,19 @@ jobs:
           npm pack
           gh release upload "$TAG" "lininn-ds-bot-$(node -p "require('./package.json').version").tgz" --clobber
 
+      - name: Publish
+        if: github.event_name == 'release' || (!inputs.dry_run && github.ref == 'refs/heads/main')
+        run: |
+          tag="$(node -p "require('./package.json').version.includes('-') ? 'next' : 'latest'")"
+          echo "Publishing $(node -p "require('./package.json').version") with the npm tag $tag"
+          npm publish --provenance --access public --tag "$tag"
+
   # The remote-control web shell. It ships as a prebuilt dist/; the relay unpacks the packed
   # tarball into web-dist/<version>/. Trusted Publishing must be configured once on npmjs.com
   # for @lininn/ds-web (same GitHub trusted publisher settings as ds-bot).
   publish-web:
     name: Build and publish @lininn/ds-web
-    needs: publish
+    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -161,13 +183,6 @@ jobs:
           if-no-files-found: error
           compression-level: 0
 
-      - name: Publish
-        if: github.event_name == 'release' || (!inputs.dry_run && github.ref == 'refs/heads/main')
-        run: |
-          tag="$(node -p "require('./package.json').version.includes('-') ? 'next' : 'latest'")"
-          echo "Publishing $(node -p "require('./package.json').version") with the npm tag $tag"
-          npm publish --provenance --access public --tag "$tag"
-
       - name: Attach the web package to the release
         if: github.event_name == 'release'
         env:
@@ -177,9 +192,16 @@ jobs:
           npm pack
           gh release upload "$TAG" "lininn-ds-web-$(node -p "require('./package.json').version").tgz" --clobber
 
+      - name: Publish
+        if: github.event_name == 'release' || (!inputs.dry_run && github.ref == 'refs/heads/main')
+        run: |
+          tag="$(node -p "require('./package.json').version.includes('-') ? 'next' : 'latest'")"
+          echo "Publishing $(node -p "require('./package.json').version") with the npm tag $tag"
+          npm publish --provenance --access public --tag "$tag"
+
   app-windows:
     name: Desktop app installer (Windows)
-    needs: publish
+    needs: check
     runs-on: windows-latest
     timeout-minutes: 30
     defaults:
@@ -216,7 +238,7 @@ jobs:
 
   app-macos:
     name: Desktop app zip (macOS ${{ matrix.arch }})
-    needs: publish
+    needs: check
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     strategy:
@@ -258,7 +280,7 @@ jobs:
 
   app-linux:
     name: Desktop app packages (Linux x64)
-    needs: publish
+    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -309,7 +331,7 @@ jobs:
   # it here, next to the desktop installers.
   app-android:
     name: Mobile app (Android APK)
-    needs: publish
+    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
