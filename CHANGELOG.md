@@ -2,6 +2,21 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
+## [0.2.9] - 2026-11-02
+
+### Added
+
+- **A group chat can start a new conversation.** Its name, members, settings and memory stay; the earlier conversation is archived. Start one from the group's right-click menu or Settings → group → **New conversation**.
+- **A group chat can be copied.** The right-click menu and the group settings offer **Duplicate group**, which takes the members and settings into a new group with no conversation and no memory.
+
+### Changed
+
+- A group chat now has a stable id and a separate current relay Session, so its memory and settings no longer depend on the Session that happens to be open.
+
+### Fixed
+
+- The READMEs explain how to open the macOS build the first time when Gatekeeper reports that it cannot verify the app.
+
 ## [0.2.8] - 2026-11-02
 
 ### Added
