@@ -9,39 +9,39 @@ const appAt = folder => join(folder, 'DeepSeek Bot.app')
 const executable = bundle => join(bundle, 'Contents', 'MacOS', 'DeepSeek Bot')
 
 test('a packaged macOS app outside the application folders is installed', () => {
-  const plan = installPlan({ isPackaged: true, platform: 'darwin', execPath: executable('/Users/a/Desktop/DeepSeek Bot.app'), env: {}, home: '/Users/a' })
-  assert.equal(plan.bundle, '/Users/a/Desktop/DeepSeek Bot.app')
+  const plan = installPlan({ isPackaged: true, platform: 'darwin', execPath: executable('/Users/<user>/Desktop/DeepSeek Bot.app'), env: {}, home: '/Users/<user>' })
+  assert.equal(plan.bundle, '/Users/<user>/Desktop/DeepSeek Bot.app')
   assert.equal(plan.name, 'DeepSeek Bot.app')
-  assert.deepEqual(plan.folders, ['/Applications', '/Users/a/Applications'])
+  assert.deepEqual(plan.folders, ['/Applications', '/Users/<user>/Applications'])
 })
 
 test('an installed app, a development run and a throwaway run are left alone', () => {
-  const plan = options => installPlan({ isPackaged: true, platform: 'darwin', env: {}, home: '/Users/a', ...options })
+  const plan = options => installPlan({ isPackaged: true, platform: 'darwin', env: {}, home: '/Users/<user>', ...options })
   assert.equal(plan({ execPath: executable('/Applications/DeepSeek Bot.app') }), undefined)
-  assert.equal(plan({ execPath: executable('/Users/a/Applications/DeepSeek Bot.app') }), undefined)
-  assert.equal(installPlan({ isPackaged: false, platform: 'darwin', execPath: executable('/Users/a/Desktop/DeepSeek Bot.app'), env: {} }), undefined)
-  assert.equal(plan({ execPath: executable('/Users/a/Desktop/DeepSeek Bot.app'), env: { DS_BOT_HOME: '/tmp/throwaway' } }), undefined)
-  assert.equal(plan({ execPath: executable('/Users/a/Desktop/DeepSeek Bot.app'), env: { DS_BOT_NO_INSTALL: '1' } }), undefined)
-  assert.equal(installPlan({ isPackaged: true, platform: 'win32', execPath: executable('/Users/a/Desktop/DeepSeek Bot.app'), env: {} }), undefined)
+  assert.equal(plan({ execPath: executable('/Users/<user>/Applications/DeepSeek Bot.app') }), undefined)
+  assert.equal(installPlan({ isPackaged: false, platform: 'darwin', execPath: executable('/Users/<user>/Desktop/DeepSeek Bot.app'), env: {} }), undefined)
+  assert.equal(plan({ execPath: executable('/Users/<user>/Desktop/DeepSeek Bot.app'), env: { DS_BOT_HOME: '/tmp/throwaway' } }), undefined)
+  assert.equal(plan({ execPath: executable('/Users/<user>/Desktop/DeepSeek Bot.app'), env: { DS_BOT_NO_INSTALL: '1' } }), undefined)
+  assert.equal(installPlan({ isPackaged: true, platform: 'win32', execPath: executable('/Users/<user>/Desktop/DeepSeek Bot.app'), env: {} }), undefined)
 })
 
 test('a folder counts as an application folder by itself, not by a parent of it', () => {
-  const folders = ['/Applications', '/Users/a/Applications']
+  const folders = ['/Applications', '/Users/<user>/Applications']
   assert.equal(installedIn('/Applications/DeepSeek Bot.app', folders), true)
-  assert.equal(installedIn('/Users/a/Applications/DeepSeek Bot.app', folders), true)
+  assert.equal(installedIn('/Users/<user>/Applications/DeepSeek Bot.app', folders), true)
   assert.equal(installedIn('/Applications/Sub/DeepSeek Bot.app', folders), false)
-  assert.equal(installedIn('/Users/a/Desktop/DeepSeek Bot.app', folders), false)
+  assert.equal(installedIn('/Users/<user>/Desktop/DeepSeek Bot.app', folders), false)
 })
 
 test('the target is the first application folder the user can write to', () => {
-  const plan = { name: 'DeepSeek Bot.app', folders: ['/Applications', '/Users/a/Applications'] }
+  const plan = { name: 'DeepSeek Bot.app', folders: ['/Applications', '/Users/<user>/Applications'] }
   assert.equal(chooseTarget({ ...plan, writable: () => true }), '/Applications/DeepSeek Bot.app')
-  assert.equal(chooseTarget({ ...plan, writable: folder => folder !== '/Applications' }), '/Users/a/Applications/DeepSeek Bot.app')
-  assert.equal(chooseTarget({ ...plan, writable: () => false }), '/Users/a/Applications/DeepSeek Bot.app')
+  assert.equal(chooseTarget({ ...plan, writable: folder => folder !== '/Applications' }), '/Users/<user>/Applications/DeepSeek Bot.app')
+  assert.equal(chooseTarget({ ...plan, writable: () => false }), '/Users/<user>/Applications/DeepSeek Bot.app')
 })
 
 test('a missing copy is installed, an equal or newer one is opened, and an older one is replaced', async () => {
-  const plan = { bundle: '/Users/a/Desktop/DeepSeek Bot.app', name: 'DeepSeek Bot.app', folders: ['/Applications'] }
+  const plan = { bundle: '/Users/<user>/Desktop/DeepSeek Bot.app', name: 'DeepSeek Bot.app', folders: ['/Applications'] }
   const decide = options => installDecision(plan, { version: '0.2.9', run: async () => ({}), writable: () => true, running: async () => false, ...options })
   assert.deepEqual(await decide({ exists: () => false }), { action: 'install', source: plan.bundle, target: '/Applications/DeepSeek Bot.app' })
   assert.deepEqual(await decide({ exists: () => true, installedVersion: async () => '0.2.9' }), { action: 'open', target: '/Applications/DeepSeek Bot.app' })
@@ -50,7 +50,7 @@ test('a missing copy is installed, an equal or newer one is opened, and an older
 })
 
 test('an older installed app that is open is not replaced under its processes', async () => {
-  const plan = { bundle: '/Users/a/Desktop/DeepSeek Bot.app', name: 'DeepSeek Bot.app', folders: ['/Applications'] }
+  const plan = { bundle: '/Users/<user>/Desktop/DeepSeek Bot.app', name: 'DeepSeek Bot.app', folders: ['/Applications'] }
   const decision = await installDecision(plan, {
     version: '0.2.9', run: async () => ({}), writable: () => true,
     exists: () => true, installedVersion: async () => '0.2.8', running: async () => true,
