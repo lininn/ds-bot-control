@@ -2,6 +2,12 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
+## [0.2.8] - 2026-11-02
+
+### Added
+
+- **Quick start in the docs and on npm.** The READMEs now open with the shortest route: `npm install -g @lininn/ds-bot`, `ds-bot start`, then Settings → Remote control with an invite code from the WeChat official account **html5开发分享**, and finally the phone at `ds.d-1.top`. An architecture diagram shows the phone, the relay, the computer and the accounts. The npm page carries the same quick start in English and Chinese.
+
 ## [0.2.7] - 2026-11-02
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "@lininn/ds-web",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Narrow-screen web shell for controlling a DS Bot team through a relay",
   "keywords": [
     "ds-bot",
