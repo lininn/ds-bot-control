@@ -38,6 +38,8 @@ const TEXT = {
     whichModels: 'Which model settings should DeepSeek Bot use?',
     failed: message => `The team could not be copied: ${message}\n\nDeepSeek Bot starts with a new team. The team in DeepSeek Harness is unchanged.`,
     notStarted: 'DeepSeek Bot could not start.',
+    installBusy: target => `DeepSeek Bot is already installed at ${target} and open. Quit it, then open this copy again.`,
+    installFailed: message => `DeepSeek Bot could not be installed in your Applications folder: ${message}\n\nThe app was not changed. Move it to Applications yourself, or open it from where it is.`,
   },
   zh: {
     welcome: '欢迎使用 DeepSeek Bot',
@@ -69,6 +71,8 @@ const TEXT = {
     whichModels: 'DeepSeek Bot 用哪一份模型设置？',
     failed: message => `团队没有复制成功：${message}\n\nDeepSeek Bot 会用一个新团队开始。DeepSeek Harness 里的团队没有变化。`,
     notStarted: 'DeepSeek Bot 没能启动。',
+    installBusy: target => `「应用程序」里已经有一个正在运行的 DeepSeek Bot（${target}）。请先退出它，再打开这一份。`,
+    installFailed: message => `没能把 DeepSeek Bot 安装到「应用程序」：${message}\n\n应用没有变化。你可以自己把它拖进「应用程序」，或者就在下载的位置打开它。`,
   },
 }
 export const localeText = table => (app.getLocale().toLowerCase().startsWith('zh') ? table.zh : table.en)

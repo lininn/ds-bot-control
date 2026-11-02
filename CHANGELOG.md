@@ -2,6 +2,13 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
+## [0.2.10] - 2026-11-02
+
+### Fixed
+
+- **The macOS build installs itself.** Its first start copies it into **Applications**, opens that copy and ends, so the zip and the unzipped folder can be deleted afterwards; an app already there is replaced unless it is running. Previously the app ran from the download in a temporary read-only location, and deleting the download while it ran crashed it.
+- **A window process that dies no longer leaves a stuck Host behind.** The app and the Host exchange a heartbeat, and a Host whose window process is gone ends itself instead of running on as an orphan.
+
 ## [0.2.9] - 2026-11-02
 
 ### Added

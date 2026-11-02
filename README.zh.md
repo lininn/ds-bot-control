@@ -45,7 +45,7 @@ ds-bot start          # 在后台启动 dsh Web，并打印访问地址
 桌面应用自带 dsh，不用先装 dsh。在 [Releases](https://github.com/lininn/ds-bot-control/releases) 里下载：
 
 - Windows（x64）：`DeepSeek-Bot-<版本>-win-x64.exe`。运行它即可安装，只装给当前用户，不要管理员权限。如果提示“Windows 已保护你的电脑”，点 **更多信息** → **仍要运行**。
-- macOS：Apple 芯片下载 `DeepSeek-Bot-<版本>-mac-arm64.zip`，Intel 下载 `DeepSeek-Bot-<版本>-mac-x64.zip`。Safari 会自动解压；把 **DeepSeek Bot** 拖进 **应用程序**，再打开。如果提示无法检查这个 App，打开 **系统设置** → **隐私与安全性**，点 **仍要打开**。
+- macOS：Apple 芯片下载 `DeepSeek-Bot-<版本>-mac-arm64.zip`，Intel 下载 `DeepSeek-Bot-<版本>-mac-x64.zip`。Safari 会自动解压；在解压出来的位置直接打开 **DeepSeek Bot**。它第一次启动时会把自己安装到 **应用程序** 并打开那一份，之后 zip 和解压出来的文件夹都可以删掉。如果提示无法检查这个 App，打开 **系统设置** → **隐私与安全性**，点 **仍要打开**。
 - Linux（x64）：`DeepSeek-Bot-<版本>-linux-x86_64.AppImage` 通用于所有发行版——加上可执行权限后打开即可。它通过 FUSE 2 挂载，可能需要先安装（Ubuntu 24.04+ 用 `sudo apt install libfuse2t64`，Fedora 用 `sudo dnf install fuse-libs`，Arch 用 `sudo pacman -S fuse2`）。Ubuntu 24.04 及以后版本会限制 AppImage 需要的沙箱，AppImage 可能因此拒绝启动；Debian/Ubuntu 上的 `DeepSeek-Bot-<版本>-linux-amd64.deb` 没有这个问题，还会加菜单项。
 
 第一次打开时，App 会问数据和 Bot 的文件放在哪里，并可以从你的 dsh 复制 Bot 团队（只读取你的 dsh，不改它）。在 App 的设置里配好模型就能用。Windows 版和 Linux 的 AppImage 会自动更新；macOS 版和 Linux 的 deb 有新版本时会提示你下载。
@@ -73,7 +73,7 @@ xattr -dr com.apple.quarantine "/Applications/DeepSeek Bot.app"
 2. **包名或地址** 填 `@lininn/ds-bot`。在中国大陆，**安装源** 选 **中国大陆镜像源**。
 3. 点 **安装**，再点 **立即启用**。如果提示“下次启动生效”，完全退出 dsh 再打开。
 
-连不上 npm 时，第 2 步也可以填 [Releases](https://github.com/lininn/ds-bot-control/releases) 里下载的 `lininn-ds-bot-0.2.9.tgz` 的完整路径，或者 `github:lininn/ds-bot-control#v0.2.9&path:/ds-bot`（需要装 Git）。
+连不上 npm 时，第 2 步也可以填 [Releases](https://github.com/lininn/ds-bot-control/releases) 里下载的 `lininn-ds-bot-0.2.10.tgz` 的完整路径，或者 `github:lininn/ds-bot-control#v0.2.10&path:/ds-bot`（需要装 Git）。
 
 从旧的 `ds-bot` 包升级：在插件页移除 `ds-bot`，再添加 `@lininn/ds-bot`。Bot、聊天和记忆都会保留。
 
