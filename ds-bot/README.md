@@ -29,7 +29,7 @@ The [project page](https://github.com/lininn/ds-bot-control) has the desktop app
 
 > Early release (v0.1). Features, tools and the saved data format can still change.
 
-Tested with dsh `0.2.1-rc.2` (Web) and `0.2.0-rc.2` (Web and Desktop).
+Tested with dsh `0.2.1-rc.5` (Web) and `0.2.0-rc.2` (Web and Desktop).
 
 ## Features
 
@@ -60,7 +60,7 @@ Tested with dsh `0.2.1-rc.2` (Web) and `0.2.0-rc.2` (Web and Desktop).
 
 The [project page](../README.md#install) has the full steps for dsh Desktop and dsh Web. In short:
 
-- dsh Desktop: Settings → Plugins → add `@lininn/ds-bot` (npm), a `.tgz` file, or `github:lininn/ds-bot-control#v0.2.10&path:/ds-bot`.
+- dsh Desktop: Settings → Plugins → add `@lininn/ds-bot` (npm), a `.tgz` file, or `github:lininn/ds-bot-control#v0.2.11&path:/ds-bot`.
 - Command line: `dsh plugin --profile desktop add @lininn/ds-bot` (or `--profile web`).
 
 To work on the plugin from a checkout, add it to a dsh profile as a linked dependency and a bundle:

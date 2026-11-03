@@ -73,7 +73,7 @@ xattr -dr com.apple.quarantine "/Applications/DeepSeek Bot.app"
 2. **包名或地址** 填 `@lininn/ds-bot`。在中国大陆，**安装源** 选 **中国大陆镜像源**。
 3. 点 **安装**，再点 **立即启用**。如果提示“下次启动生效”，完全退出 dsh 再打开。
 
-连不上 npm 时，第 2 步也可以填 [Releases](https://github.com/lininn/ds-bot-control/releases) 里下载的 `lininn-ds-bot-0.2.10.tgz` 的完整路径，或者 `github:lininn/ds-bot-control#v0.2.10&path:/ds-bot`（需要装 Git）。
+连不上 npm 时，第 2 步也可以填 [Releases](https://github.com/lininn/ds-bot-control/releases) 里下载的 `lininn-ds-bot-0.2.11.tgz` 的完整路径，或者 `github:lininn/ds-bot-control#v0.2.11&path:/ds-bot`（需要装 Git）。
 
 从旧的 `ds-bot` 包升级：在插件页移除 `ds-bot`，再添加 `@lininn/ds-bot`。Bot、聊天和记忆都会保留。
 
@@ -82,8 +82,8 @@ xattr -dr com.apple.quarantine "/Applications/DeepSeek Bot.app"
 需要 Node.js `22.19` 以上和 pnpm。
 
 ```sh
-npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add @lininn/ds-bot
-npx @deepseek-ai/dsh@0.2.1-rc.2 web
+npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add @lininn/ds-bot
+npx @deepseek-ai/dsh@0.2.1-rc.5 web
 ```
 
 想让这个 Web UI 在后台一直运行（这样手机端随时能找到这个团队），包里还带了一个 `ds-bot` 命令：

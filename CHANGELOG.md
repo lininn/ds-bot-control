@@ -2,6 +2,12 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
+## [0.2.11] - 2026-11-03
+
+### Changed
+
+- **The bundled DeepSeek Harness moves from 0.2.1-rc.2 to 0.2.1-rc.5.** The desktop app, the app engine, the test harness and the release workflow all pin the same version, and the install commands in the docs name it. `ws` follows the newer DSH to 8.22.1 so electron-builder still packs it.
+
 ## [0.2.10] - 2026-11-02
 
 ### Fixed
