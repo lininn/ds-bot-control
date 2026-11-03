@@ -46,11 +46,13 @@ class FakeSocket {
 
 const tick = () => new Promise(resolve => setImmediate(resolve))
 
-function harness({ feed = false } = {}) {
+function harness({ feed = false, watchdogMs } = {}) {
   FakeSocket.instances = []
   const handled = []
   let subscribe
   const timers = []
+  const pending = new Map()
+  let nextTimerId = 0
   const connector = createConnector({
     url: 'ws://relay.test/connector',
     token: 'tok-123',
@@ -58,6 +60,7 @@ function harness({ feed = false } = {}) {
     deviceName: 'My Mac',
     version: '9.9.9',
     apiProtocol: 7,
+    watchdogMs,
     handle: async (endpoint, payload) => {
       handled.push([endpoint, payload])
       return { ok: true, value: { endpoint } }
@@ -66,10 +69,26 @@ function harness({ feed = false } = {}) {
     WebSocketImpl: FakeSocket,
     logger: { warn() {} },
     random: () => 0,
-    setTimeoutImpl: (fn, ms) => { timers.push(ms); return timers.length },
-    clearTimeoutImpl: () => {},
+    setTimeoutImpl: (fn, ms) => {
+      timers.push(ms)
+      const id = ++nextTimerId
+      pending.set(id, fn)
+      return id
+    },
+    clearTimeoutImpl: (id) => { pending.delete(id) },
   })
-  return { connector, handled, timers, get subscribe() { return subscribe }, socket: () => FakeSocket.instances.at(-1) }
+  // Fire the timer that is still pending and scheduled last (the retry, after the watchdog).
+  const runLastTimer = () => {
+    const id = [...pending.keys()].at(-1)
+    const fn = pending.get(id)
+    pending.delete(id)
+    fn?.()
+  }
+  return {
+    connector, handled, timers, pending, runLastTimer,
+    get subscribe() { return subscribe },
+    socket: () => FakeSocket.instances.at(-1),
+  }
 }
 
 test('the connector binds with its identity, version and protocol', () => {
@@ -139,14 +158,59 @@ test('a wrong token stops the connector instead of retrying', () => {
 })
 
 test('a dropped connection retries with backoff', () => {
-  const { connector, timers, socket } = harness()
+  const { connector, pending, timers, socket } = harness()
   connector.start()
   const ws = socket()
   ws.open()
   ws.emit('close', { code: 1006 })
-  assert.equal(timers.length, 1)
-  assert.equal(timers[0] >= 500 && timers[0] <= 1_000, true)
+  // The open armed the watchdog; close cleared it and left only the retry.
+  assert.equal(pending.size, 1)
+  assert.equal(timers.at(-1) >= 500 && timers.at(-1) <= 1_000, true)
   connector.stop()
+})
+
+test('a socket error reconnects even when no close event follows', () => {
+  const { connector, pending, socket } = harness()
+  connector.start()
+  const ws = socket()
+  ws.open()
+  assert.equal(pending.size, 1)
+  ws.emit('error', {})
+  assert.equal(ws.abandoned, true)
+  assert.equal(ws.readyState, 3)
+  assert.equal(pending.size, 1)
+  // A close arriving later must not schedule a second retry for the same socket.
+  ws.emit('close', { code: 1006 })
+  assert.equal(pending.size, 1)
+  connector.stop()
+})
+
+test('a connection that goes silent is reconnected by the watchdog', () => {
+  const { connector, pending, runLastTimer, socket } = harness({ watchdogMs: 60_000 })
+  connector.start()
+  const ws = socket()
+  ws.open()
+  assert.equal(pending.size, 1)
+  runLastTimer()
+  assert.equal(ws.abandoned, true)
+  assert.equal(ws.readyState, 3)
+  // The watchdog cleared itself and the abandon scheduled the retry.
+  assert.equal(pending.size, 1)
+  connector.stop()
+})
+
+test('an inbound frame re-arms the watchdog', () => {
+  const { connector, pending, socket } = harness()
+  connector.start()
+  const ws = socket()
+  ws.open()
+  const armedOnOpen = [...pending.keys()].at(-1)
+  ws.receive({ t: MSG.ping, at: 1 })
+  const armedAfter = [...pending.keys()].at(-1)
+  assert.notEqual(armedAfter, armedOnOpen)
+  assert.equal(pending.size, 1)
+  connector.stop()
+  assert.equal(pending.size, 0)
 })
 
 test('a relay address yields both the socket and the desktop sign-in URL', () => {

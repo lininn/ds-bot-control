@@ -2,6 +2,12 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
+## [0.2.12] - 2026-11-03
+
+### Fixed
+
+- **A lost relay connection now heals itself.** The remote-control connector retries after a socket error even when no `close` event follows, and reconnects after 60 seconds of silence instead of staying on a half-open socket. Previously a stale socket could stay in place, so the phone kept connecting but the desktop never came back until the app was restarted.
+
 ## [0.2.11] - 2026-11-03
 
 ### Changed

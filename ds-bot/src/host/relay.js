@@ -22,6 +22,10 @@ const VERSION = require('../../package.json').version
 const OPEN = 1
 const BACKOFF_MIN_MS = 1_000
 const BACKOFF_MAX_MS = 30_000
+// The relay pings every 15 s and drops a connector it has not heard from in 45 s. A socket
+// can still go silent without ever emitting `close` (a half-open connection, a dead proxy),
+// so the connector reconnects itself after this much silence instead of waiting for the OS.
+const IDLE_WATCHDOG_MS = 60_000
 
 // The device's relay state lives in one file under the team's home: the id that pairs this
 // machine across restarts, and the account it signed in with. `relay.json` is readable by
@@ -203,11 +207,13 @@ export function createConnector({
   random = Math.random,
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
+  watchdogMs = IDLE_WATCHDOG_MS,
 }) {
   let socket
   let stopped = false
   let attempt = 0
   let retryTimer
+  let watchdogTimer
   let unsubscribeFeed
   let feedSubscribed = false
 
@@ -274,6 +280,38 @@ export function createConnector({
     retryTimer?.unref?.()
   }
 
+  const clearWatchdog = () => {
+    if (watchdogTimer !== undefined) clearTimeoutImpl(watchdogTimer)
+    watchdogTimer = undefined
+  }
+
+  // Every inbound frame proves the link is alive, so re-arm from zero. A socket that has been
+  // replaced or abandoned by the time the timer fires is left alone.
+  const armWatchdog = (ws) => {
+    clearWatchdog()
+    if (stopped || socket !== ws) return
+    watchdogTimer = setTimeoutImpl(() => {
+      watchdogTimer = undefined
+      if (stopped || socket !== ws) return
+      logger?.warn?.(`relay silent for ${Math.round(watchdogMs / 1_000)}s; reconnecting`)
+      abandon(ws)
+    }, watchdogMs)
+    watchdogTimer?.unref?.()
+  }
+
+  // Retire a socket without waiting for `close`: clear its timer, drop the feed and schedule a
+  // retry. The `abandoned` flag makes the later `close` event a no-op so a retry is never
+  // scheduled twice for the same connection.
+  const abandon = (ws) => {
+    if (ws?.abandoned === true) return
+    if (ws !== undefined) ws.abandoned = true
+    clearWatchdog()
+    stopFeed()
+    if (socket === ws) socket = undefined
+    try { ws?.close() } catch { /* already closed */ }
+    scheduleRetry()
+  }
+
   function connect() {
     if (stopped) return
     let next
@@ -286,10 +324,20 @@ export function createConnector({
     }
     socket = next
     next.addEventListener?.('open', () => {
+      if (socket !== next) return
+      armWatchdog(next)
       send({ t: MSG.bind, role: 'connector', kind: 'dsbot', deviceId, name: deviceName, version, apiProtocol, accessToken: token })
     })
-    next.addEventListener?.('message', onMessage)
+    next.addEventListener?.('message', (event) => {
+      // A socket we already abandoned or replaced must not feed replies into the new one.
+      if (socket !== next) return
+      armWatchdog(next)
+      onMessage(event)
+    })
     next.addEventListener?.('close', (event) => {
+      if (next.abandoned === true) return
+      next.abandoned = true
+      clearWatchdog()
       stopFeed()
       if (socket === next) socket = undefined
       const code = event?.code
@@ -301,7 +349,12 @@ export function createConnector({
       }
       scheduleRetry()
     })
-    next.addEventListener?.('error', () => { /* a close event follows */ })
+    // A failed handshake sometimes reports `error` without a following `close`; without this
+    // the stale socket would stay in place and `start()` would never open a new one.
+    next.addEventListener?.('error', () => {
+      logger?.warn?.('relay socket errored; reconnecting')
+      abandon(next)
+    })
   }
 
   return {
@@ -310,9 +363,12 @@ export function createConnector({
     },
     stop() {
       stopped = true
+      clearWatchdog()
       if (retryTimer !== undefined) clearTimeoutImpl(retryTimer)
       retryTimer = undefined
       stopFeed()
+      // Mark it first so the close event that our own close() triggers does not retry.
+      if (socket !== undefined) socket.abandoned = true
       try { socket?.close() } catch { /* already closed */ }
       socket = undefined
     },
