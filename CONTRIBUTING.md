@@ -73,7 +73,8 @@ Keep one pull request to one issue. Split a large change into several pull reque
 1. In a pull request into `dev`, set the version in `ds-bot/package.json` and write the `CHANGELOG.md` section from the Changelog sentences of the merged pull requests.
 2. Open a pull request from `dev` into `main` titled `release: vX.Y.Z`. List every `Fixes #<number>` of the release in its description, so that these issues close when it is merged.
 3. Before you merge it, run the [release checklist](docs/dev/release-checklist.md) (in Chinese) on a real Windows machine, and on macOS when the change touches it, and post the result in the pull request. Merge it with a merge commit and publish a GitHub release `vX.Y.Z` on `main`. The Release workflow checks that the tag matches the version and is on `main`, runs the checks and publishes the package to npm (a pre-release version under the npm tag `next`). Do not run `npm publish` by hand.
-4. For a hotfix, start `fix/hot-<name>` from `main`, open the pull request into `main`, release a patch version, then merge `main` into `dev`.
+4. After the release is published, deploy the public relay on `kd1` in the same version: sync `relay/` to `/opt/ds-relay`, run `npm install --omit=dev` there, unpack the release's `lininn-ds-web-<version>.tgz` into `/opt/ds-relay/web-dist/<version>/` (its `index.html` and `assets/` go directly in that directory), then `systemctl restart ds-relay`. A desktop that reports a version with no directory there makes the phone show a version-mismatch page. See [relay/README.md](relay/README.md#deploy-on-kd1-the-public-relay).
+5. For a hotfix, start `fix/hot-<name>` from `main`, open the pull request into `main`, release a patch version, then merge `main` into `dev`.
 
 ## Set up
 
