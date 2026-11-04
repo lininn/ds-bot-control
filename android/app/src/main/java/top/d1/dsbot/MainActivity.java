@@ -8,6 +8,7 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -23,6 +24,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
 
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
 public class MainActivity extends Activity {
     private static final String DEFAULT_URL = "https://ds.d-1.top";
     private static final String PREFS = "shell";
@@ -30,6 +33,7 @@ public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
 
     private WebView web;
+    private SwipeRefreshLayout refresh;
     private ValueCallback<Uri[]> picked;
     // The origin the app treats as its own; anything else opens in the browser.
     private String home = "";
@@ -42,8 +46,18 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         web = new WebView(this);
-        web.setBackgroundColor(Color.parseColor("#0f1115"));
-        setContentView(web, new ViewGroup.LayoutParams(
+        // The page paints its own background once it loads; until then this is what a user sees,
+        // so it has to match the phone's light or dark mode instead of always being dark.
+        boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+        web.setBackgroundColor(Color.parseColor(night ? "#141414" : "#fcfcfc"));
+        // Pull down from the top of the page to load it again: the phone holds a long-lived page
+        // across app switches, and a reload is the one recovery a user can reach without a menu.
+        refresh = new SwipeRefreshLayout(this);
+        refresh.addView(web, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        refresh.setOnRefreshListener(() -> web.reload());
+        setContentView(refresh, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         WebSettings settings = web.getSettings();
@@ -56,20 +70,12 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new Chrome());
 
         String saved = prefs().getString(KEY_URL, null);
-        if (state != null) {
-            web.restoreState(state);
-        } else if (saved == null) {
+        if (saved == null) {
             // First run: show the address once, so a relay on this network is one field away.
             editAddress(DEFAULT_URL, true);
         } else {
             open(saved);
         }
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle out) {
-        super.onSaveInstanceState(out);
-        web.saveState(out);
     }
 
     @Override
@@ -142,12 +148,16 @@ public class MainActivity extends Activity {
         @Override
         public void onPageFinished(WebView view, String url) {
             reported = false;
+            // Save the sign-in cookie now: a process the system kills must come back signed in.
+            CookieManager.getInstance().flush();
+            if (refresh.isRefreshing()) refresh.setRefreshing(false);
         }
 
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
             if (!request.isForMainFrame() || reported) return;
             reported = true;
+            if (refresh.isRefreshing()) refresh.setRefreshing(false);
             String address = web.getUrl() == null ? DEFAULT_URL : web.getUrl();
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle(R.string.error_title)

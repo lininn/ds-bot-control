@@ -2,6 +2,13 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
+## [0.2.15] - 2026-11-04
+
+### Fixed
+
+- **The phone no longer opens on a black screen.** The web shell had no background of its own until its bundle ran, and the Android app painted every WebView near-black, so a light phone showed an empty black page while it connected and users took it for a broken app. The shell now paints its first frame in the phone's light or dark color, and the app's WebView background follows the phone's mode instead of a fixed dark value.
+- **Reopening the phone app shows the page again, and pull down to reload.** The app used to restore a saved WebView state after the system killed its process, which could come back blank. It now opens the saved relay address afresh, keeps the sign-in cookie on disk, and reloads the page when you pull down from the top.
+
 ## [0.2.14] - 2026-11-04
 
 ### Fixed

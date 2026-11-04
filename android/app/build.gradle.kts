@@ -58,3 +58,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
+dependencies {
+    // Pull to refresh the page the relay serves.
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+}
