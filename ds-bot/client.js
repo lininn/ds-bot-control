@@ -1103,7 +1103,13 @@ var ZH = {
   "Signed in as {name}": "已登录：{name}",
   "this computer": "这台电脑",
   "Open the relay on your phone and sign in with the same account.": "在手机上打开中转地址，用同一账号登录即可控制这台电脑。",
+  Connecting: "连接中",
   "Reconnecting…": "重连中…",
+  // Why the connector is not online, shown in place of "Reconnecting…".
+  "This device is open in another window": "这台电脑已在另一个窗口接管，这个窗口不再连接",
+  "Remote control is off in this window": "这个窗口中未开启远程控制",
+  "Sign-in expired. Sign in again.": "登录已失效，请重新登录",
+  "Reconnect now": "立即重连",
   "This computer": "这台电脑",
   "Turn off remote control": "关闭远程控制",
   "Sign out": "退出登录",
@@ -1704,6 +1710,7 @@ function teamActions({ call: call2, after, partFor, roster, ui: ui2, live, cards
     relayStatus: () => call2("relay-status"),
     relayLogin: (payload) => call2("relay-login", payload),
     relayLogout: () => call2("relay-logout"),
+    relayReconnect: () => call2("relay-reconnect"),
     saveCapability: (capability) => after(call2("capability-save", capability)),
     deleteCapability: (name) => after(call2("capability-delete", { name })),
     approveCapability: (name) => after(call2("capability-approve", { name })),
@@ -15905,18 +15912,43 @@ function RelayPage({ actions, Section, Row: Row3 }) {
     setError("");
     actions.relayLogout().then((next) => setStatus(next)).catch((failure) => setError(failure?.message ?? String(failure))).finally(() => setBusy(false));
   };
+  const reconnect = () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    actions.relayReconnect().then((next) => setStatus(next)).catch((failure) => setError(failure?.message ?? String(failure))).finally(() => setBusy(false));
+  };
   if (status === null) {
     return (0, import_react40.createElement)(Section, { title: t("Remote control") }, (0, import_react40.createElement)("p", { className: "bt-set-hint" }, t("Checking…")));
   }
   if (status.bound) {
-    const online = status.relayConnected;
+    const state = status.state ?? (status.relayConnected ? "connected" : "reconnecting");
+    const label = {
+      connected: t("Connected"),
+      connecting: t("Connecting"),
+      reconnecting: t("Reconnecting…"),
+      occupied: t("This device is open in another window"),
+      "read-only": t("Remote control is off in this window"),
+      expired: t("Sign-in expired. Sign in again.")
+    }[state] ?? t("Reconnecting…");
+    const retryable = state === "reconnecting" || state === "occupied" || state === "read-only";
     return (0, import_react40.createElement)(
       Section,
       { title: t("Remote control") },
       (0, import_react40.createElement)(Row3, {
         label: t("Signed in as {name}", { name: status.username || t("this computer") }),
         hint: t("Open the relay on your phone and sign in with the same account.")
-      }, (0, import_react40.createElement)("span", { className: "bt-set-hint", role: "status" }, online ? t("Connected") : t("Reconnecting…"))),
+      }, (0, import_react40.createElement)("span", { className: "bt-set-hint", role: "status" }, label)),
+      retryable ? (0, import_react40.createElement)(
+        "div",
+        { className: "bt-set-row" },
+        (0, import_react40.createElement)("div", { className: "bt-set-copy" }),
+        (0, import_react40.createElement)(
+          "div",
+          { className: "bt-set-control" },
+          (0, import_react40.createElement)("button", { type: "button", className: "bt-soft bt-soft-sm", disabled: busy, onClick: reconnect }, t("Reconnect now"))
+        )
+      ) : null,
       (0, import_react40.createElement)(Row3, { label: t("This computer"), hint: status.deviceName }, null),
       (0, import_react40.createElement)(
         "div",
@@ -15935,6 +15967,7 @@ function RelayPage({ actions, Section, Row: Row3 }) {
     Section,
     { title: t("Remote control") },
     (0, import_react40.createElement)("p", { className: "bt-set-hint" }, t("Sign in with your account to let your phone control this computer. The phone signs in with the same account.")),
+    status.state === "read-only" ? (0, import_react40.createElement)("p", { className: "bt-set-hint" }, t("Remote control is off in this window")) : null,
     (0, import_react40.createElement)(
       Row3,
       { label: t("Relay address"), hint: t("For example https://ds.example.com") },

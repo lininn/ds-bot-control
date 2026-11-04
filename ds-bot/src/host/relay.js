@@ -12,6 +12,7 @@
 import { createRequire } from 'node:module'
 import { randomUUID } from 'node:crypto'
 import { hostname } from 'node:os'
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CLOSE_BAD_TOKEN, CLOSE_DUPLICATE_DEVICE, MSG, RELAY_PROTOCOL, isForbiddenEndpoint } from '../shared/relay-protocol.js'
@@ -26,6 +27,12 @@ const BACKOFF_MAX_MS = 30_000
 // can still go silent without ever emitting `close` (a half-open connection, a dead proxy),
 // so the connector reconnects itself after this much silence instead of waiting for the OS.
 const IDLE_WATCHDOG_MS = 60_000
+// A TCP/TLS handshake that never completes (a black-holed proxy, a host that accepts and then
+// says nothing) leaves the socket in CONNECTING forever, so the connector gives up and retries.
+const CONNECT_TIMEOUT_MS = 20_000
+// A duplicate device id means another host is running with the same relay.json. Backing off
+// this far keeps the two from fighting over the id; a manual reconnect still tries at once.
+const OCCUPIED_BACKOFF_ATTEMPT = 10
 
 // The device's relay state lives in one file under the team's home: the id that pairs this
 // machine across restarts, and the account it signed in with. `relay.json` is readable by
@@ -65,6 +72,35 @@ export function relayUrls(base) {
   return { socket, login: `${httpBase}/api/desktop/login` }
 }
 
+// `relay.json` travels with the team folder (a backup, a copy to another Mac), so the pairing id
+// it carries cannot be trusted on its own. This is a best-effort per-machine key: the platform
+// UUID where there is one, and nothing where there is not, because a wrong guess would rotate a
+// working device id. An empty result means "do not migrate".
+export function detectMachineId() {
+  try {
+    if (process.platform === 'darwin') {
+      const out = execFileSync('ioreg', ['-rd1', '-c', 'IOPlatformExpertDevice'], { encoding: 'utf8', timeout: 2_000 })
+      return /"IOPlatformUUID"\s*=\s*"([^"]+)"/.exec(out)?.[1] ?? ''
+    }
+    if (process.platform === 'linux') return readFileSync('/etc/machine-id', 'utf8').trim()
+    if (process.platform === 'win32') return process.env.COMPUTERNAME ?? ''
+  } catch { /* detection is best-effort; the pairing id stays as it was */ }
+  return ''
+}
+
+// macOS calls a Mac with no DNS name `bogon`, which is what `hostname()` returns; the name in
+// System Settings is the one the person recognizes and the one the phone's device picker shows.
+export function computerName() {
+  try {
+    if (process.platform === 'darwin') {
+      const out = execFileSync('scutil', ['--get', 'ComputerName'], { encoding: 'utf8', timeout: 2_000 }).trim()
+      if (out !== '') return out
+    }
+    if (process.platform === 'win32' && process.env.COMPUTERNAME) return process.env.COMPUTERNAME
+  } catch { /* fall back to the hostname */ }
+  return hostname()
+}
+
 // The relay connector and the settings page share this controller. `login` asks the relay
 // for the account's access token, `logout` forgets it, and either restarts the socket.
 export function createRelayController({
@@ -74,7 +110,7 @@ export function createRelayController({
   subscribeFeed,
   version = VERSION,
   apiProtocol = RELAY_PROTOCOL,
-  defaultDeviceName = hostname(),
+  defaultDeviceName = computerName,
   fetchImpl = globalThis.fetch,
   WebSocketImpl = globalThis.WebSocket,
   logger = console,
@@ -83,13 +119,56 @@ export function createRelayController({
   clearTimeoutImpl = clearTimeout,
   env = process.env,
   defaultUrl = DEFAULT_RELAY_URL,
+  // Why this host cannot change the team, or undefined when it owns it (store.js `readOnly`).
+  // Only the owner runs the connector: a copy of the team opened in a second window must not
+  // bind the same device id and take turns kicking the real owner offline.
+  readOnly = () => undefined,
+  // The machine this file belongs to, used to rotate a pairing id that was copied here.
+  machineId = detectMachineId,
+  connectTimeoutMs = CONNECT_TIMEOUT_MS,
 }) {
   let saved = readRelayFile(home)
   let connector
-  // Generated only when a connector actually binds, so loading the plugin writes nothing.
+  // Both platform lookups are deferred and memoised: a person who never turns on remote control
+  // should not pay for an `ioreg`/`scutil` call on every start.
+  let resolvedName
+  let resolvedMachine
+  const defaultName = () => {
+    if (resolvedName !== undefined) return resolvedName
+    const value = typeof defaultDeviceName === 'function' ? defaultDeviceName() : defaultDeviceName
+    resolvedName = typeof value === 'string' && value !== '' ? value : hostname()
+    return resolvedName
+  }
+  const machine = () => {
+    if (resolvedMachine !== undefined) return resolvedMachine
+    const value = typeof machineId === 'function' ? machineId() : machineId
+    resolvedMachine = typeof value === 'string' ? value : ''
+    return resolvedMachine
+  }
+  // Resolved on first use, never at load, so merely opening the team writes nothing. A file
+  // without a machine id keeps the device id it has (that is the common upgrade path); a file
+  // that says it belongs to a different machine gets a fresh one, because pairing at that relay
+  // must not follow a copied team folder.
   const deviceId = () => {
-    if (typeof saved.deviceId === 'string' && saved.deviceId !== '') return saved.deviceId
-    saved = saveRelayFile(home, { ...saved, deviceId: randomUUID() })
+    const identity = machine()
+    const known = typeof saved.machineId === 'string' ? saved.machineId : ''
+    const hasId = typeof saved.deviceId === 'string' && saved.deviceId !== ''
+    if (identity === '') {
+      if (hasId) return saved.deviceId
+      saved = saveRelayFile(home, { ...saved, deviceId: randomUUID() })
+      return saved.deviceId
+    }
+    if (known !== '' && known !== identity) {
+      // The file was copied from another machine; pairing at that relay must not follow it.
+      saved = saveRelayFile(home, { ...saved, machineId: identity, deviceId: randomUUID() })
+      return saved.deviceId
+    }
+    // No machine id yet (the upgrade path) or the same one: keep the device id as it is.
+    if (hasId) {
+      if (known === '') saved = saveRelayFile(home, { ...saved, machineId: identity })
+      return saved.deviceId
+    }
+    saved = saveRelayFile(home, { ...saved, machineId: identity, deviceId: randomUUID() })
     return saved.deviceId
   }
 
@@ -103,11 +182,30 @@ export function createRelayController({
     if (typeof saved.token === 'string' && saved.token !== '') return saved.token
     return typeof config.token === 'string' ? config.token : ''
   }
-  const deviceName = () => (typeof saved.deviceName === 'string' && saved.deviceName !== '' ? saved.deviceName : typeof config.deviceName === 'string' && config.deviceName !== '' ? config.deviceName : defaultDeviceName)
+  const storedName = () => (typeof saved.deviceName === 'string' && saved.deviceName !== '' ? saved.deviceName : '')
+  const deviceName = () => {
+    const name = storedName()
+    if (name !== '') {
+      // A name written before this build is the OS hostname (`bogon` on an offline Mac);
+      // replace just that placeholder with the computer name and write it once.
+      const fallback = defaultName()
+      if (name === hostname() && fallback !== hostname()) {
+        saved = saveRelayFile(home, { ...saved, deviceName: fallback })
+        return saved.deviceName
+      }
+      return name
+    }
+    if (typeof config.deviceName === 'string' && config.deviceName !== '') return config.deviceName
+    return defaultName()
+  }
+
+  const locked = () => readOnly() !== undefined
 
   const reconnector = () => {
     connector?.stop()
     connector = undefined
+    // Another host owns the team; it runs the connector. This one shows why instead.
+    if (locked()) return
     const target = relayUrls(configuredUrl())
     if (target === undefined || token() === '') return
     connector = createConnector({
@@ -124,8 +222,18 @@ export function createRelayController({
       random,
       setTimeoutImpl,
       clearTimeoutImpl,
+      connectTimeoutMs,
     })
     connector.start()
+  }
+
+  // What the settings page shows: `connected`, `connecting`, `reconnecting`, `occupied` (this
+  // device id is live in another host), `expired` (the relay rejected the token), `read-only`
+  // (another dsh owns this team) or `idle` (not signed in, or switched off).
+  const relayState = () => {
+    if (locked()) return 'read-only'
+    if (token() === '' || relayUrls(configuredUrl()) === undefined) return 'idle'
+    return connector?.state ?? 'idle'
   }
 
   const status = () => ({
@@ -135,6 +243,7 @@ export function createRelayController({
     url: configuredUrl(),
     deviceName: deviceName(),
     relayConnected: connector?.connected === true,
+    state: relayState(),
   })
 
   const invalid = message => Object.assign(new Error(message), { code: 'bot/invalid' })
@@ -182,6 +291,12 @@ export function createRelayController({
       return status()
     },
     start: reconnector,
+    // A manual retry from the settings page: drops the current socket and any backoff, then
+    // dials again. It is how a host that was `occupied` recovers as soon as the other one quits.
+    reconnect() {
+      reconnector()
+      return status()
+    },
     stop() {
       connector?.stop()
       connector = undefined
@@ -208,11 +323,17 @@ export function createConnector({
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
   watchdogMs = IDLE_WATCHDOG_MS,
+  connectTimeoutMs = CONNECT_TIMEOUT_MS,
 }) {
   let socket
   let stopped = false
+  // Why the connector stopped for good: only a rejected token cannot be retried.
+  let stoppedReason = ''
+  // The relay said another host already owns this device id. It clears once we bind again.
+  let occupied = false
   let attempt = 0
   let retryTimer
+  let connectTimer
   let watchdogTimer
   let unsubscribeFeed
   let feedSubscribed = false
@@ -263,14 +384,14 @@ export function createConnector({
       case MSG.feedSubscribe: startFeed(message); break
       case MSG.feedUnsubscribe: stopFeed(); break
       case MSG.ping: send({ t: MSG.pong, at: message.at }); break
-      case MSG.bound: attempt = 0; break
+      case MSG.bound: attempt = 0; occupied = false; break
       default: break
     }
   }
 
   const scheduleRetry = () => {
     if (stopped) return
-    const cap = Math.min(BACKOFF_MAX_MS, BACKOFF_MIN_MS * 2 ** attempt)
+    const cap = Math.min(BACKOFF_MAX_MS, BACKOFF_MIN_MS * 2 ** Math.min(attempt, 10))
     const delay = cap / 2 + random() * (cap / 2)
     attempt += 1
     retryTimer = setTimeoutImpl(() => {
@@ -278,6 +399,11 @@ export function createConnector({
       connect()
     }, delay)
     retryTimer?.unref?.()
+  }
+
+  const clearConnectTimer = () => {
+    if (connectTimer !== undefined) clearTimeoutImpl(connectTimer)
+    connectTimer = undefined
   }
 
   const clearWatchdog = () => {
@@ -305,6 +431,7 @@ export function createConnector({
   const abandon = (ws) => {
     if (ws?.abandoned === true) return
     if (ws !== undefined) ws.abandoned = true
+    clearConnectTimer()
     clearWatchdog()
     stopFeed()
     if (socket === ws) socket = undefined
@@ -323,8 +450,20 @@ export function createConnector({
       return
     }
     socket = next
+    // A handshake that never completes would otherwise sit here forever and never retry.
+    clearConnectTimer()
+    connectTimer = setTimeoutImpl(() => {
+      connectTimer = undefined
+      if (stopped || socket !== next || next.readyState === OPEN) return
+      logger?.warn?.(`relay did not open within ${Math.round(connectTimeoutMs / 1_000)}s; reconnecting`)
+      abandon(next)
+    }, connectTimeoutMs)
+    connectTimer?.unref?.()
     next.addEventListener?.('open', () => {
       if (socket !== next) return
+      clearConnectTimer()
+      // A new connection is in; unless the relay says otherwise, we own this id again.
+      occupied = false
       armWatchdog(next)
       send({ t: MSG.bind, role: 'connector', kind: 'dsbot', deviceId, name: deviceName, version, apiProtocol, accessToken: token })
     })
@@ -337,14 +476,26 @@ export function createConnector({
     next.addEventListener?.('close', (event) => {
       if (next.abandoned === true) return
       next.abandoned = true
+      clearConnectTimer()
       clearWatchdog()
       stopFeed()
       if (socket === next) socket = undefined
       const code = event?.code
-      if (code === CLOSE_BAD_TOKEN || code === CLOSE_DUPLICATE_DEVICE) {
-        // Retrying cannot help: the token is wrong, or another window already owns this id.
+      if (code === CLOSE_BAD_TOKEN) {
+        // The account's token is wrong or revoked; retrying cannot help until a new sign-in.
         stopped = true
-        logger?.warn?.(`relay closed the connection (${code}); not retrying`)
+        stoppedReason = 'expired'
+        logger?.warn?.('relay rejected the token; sign in again')
+        return
+      }
+      if (code === CLOSE_DUPLICATE_DEVICE) {
+        // Another host is bound with this device id (usually the team folder opened twice).
+        // Retry far apart rather than fast, so the two do not take turns kicking each other;
+        // the settings page shows "occupied" and offers a manual reconnect.
+        occupied = true
+        attempt = Math.max(attempt, OCCUPIED_BACKOFF_ATTEMPT)
+        logger?.warn?.('relay says this device is in use by another host; waiting')
+        scheduleRetry()
         return
       }
       scheduleRetry()
@@ -363,6 +514,7 @@ export function createConnector({
     },
     stop() {
       stopped = true
+      clearConnectTimer()
       clearWatchdog()
       if (retryTimer !== undefined) clearTimeoutImpl(retryTimer)
       retryTimer = undefined
@@ -372,8 +524,17 @@ export function createConnector({
       try { socket?.close() } catch { /* already closed */ }
       socket = undefined
     },
+    // `connected` is the bound socket; `state` is what the settings page renders. `occupied`
+    // outlives a retry wait so a duplicate-id host stays visibly parked instead of flapping.
     get connected() {
       return socket?.readyState === OPEN
+    },
+    get state() {
+      if (stopped) return stoppedReason === 'expired' ? 'expired' : 'stopped'
+      if (socket?.readyState === OPEN) return 'connected'
+      if (socket !== undefined) return 'connecting'
+      if (retryTimer !== undefined) return occupied ? 'occupied' : 'reconnecting'
+      return 'idle'
     },
   }
 }
@@ -389,10 +550,19 @@ export function install(rt) {
     config: config ?? {},
     handle: (endpoint, payload, signal) => rt.handle(endpoint, payload, signal),
     subscribeFeed: subscriber => rt.subscribeFeed(subscriber),
+    readOnly: () => rt.readOnly?.(),
     logger: ctx.logger ?? console,
   })
   ctx.effect(() => {
-    rt.relay.start()
-    return () => rt.relay.stop()
+    let disposed = false
+    // The store claims `state.lock` on its first load. Starting before that would let a second
+    // window believe it owns the team and bind the same device id, so wait for the claim.
+    Promise.resolve(rt.load?.())
+      .catch(error => (ctx.logger ?? console).warn?.('ds-bot: relay start after load failed: %s', error))
+      .then(() => { if (!disposed) rt.relay.start() })
+    return () => {
+      disposed = true
+      rt.relay.stop()
+    }
   }, 'ds-bot: relay connector')
 }

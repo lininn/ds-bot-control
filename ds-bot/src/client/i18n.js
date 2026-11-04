@@ -1057,7 +1057,13 @@ const ZH = {
   'Signed in as {name}': '已登录：{name}',
   'this computer': '这台电脑',
   'Open the relay on your phone and sign in with the same account.': '在手机上打开中转地址，用同一账号登录即可控制这台电脑。',
+  Connecting: '连接中',
   'Reconnecting…': '重连中…',
+  // Why the connector is not online, shown in place of "Reconnecting…".
+  'This device is open in another window': '这台电脑已在另一个窗口接管，这个窗口不再连接',
+  'Remote control is off in this window': '这个窗口中未开启远程控制',
+  'Sign-in expired. Sign in again.': '登录已失效，请重新登录',
+  'Reconnect now': '立即重连',
   'This computer': '这台电脑',
   'Turn off remote control': '关闭远程控制',
   'Sign out': '退出登录',

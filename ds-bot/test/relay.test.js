@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { hostname, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { CLOSE_BAD_TOKEN, MSG } from '../src/shared/relay-protocol.js'
+import { CLOSE_BAD_TOKEN, CLOSE_DUPLICATE_DEVICE, MSG } from '../src/shared/relay-protocol.js'
 import { DEFAULT_RELAY_URL, createConnector, createRelayController, relayUrls } from '../src/host/relay.js'
 
 // A stand-in for the browser/Node WebSocket the connector uses. The test drives its events.
@@ -46,7 +46,7 @@ class FakeSocket {
 
 const tick = () => new Promise(resolve => setImmediate(resolve))
 
-function harness({ feed = false, watchdogMs } = {}) {
+function harness({ feed = false, watchdogMs, connectTimeoutMs } = {}) {
   FakeSocket.instances = []
   const handled = []
   let subscribe
@@ -61,6 +61,7 @@ function harness({ feed = false, watchdogMs } = {}) {
     version: '9.9.9',
     apiProtocol: 7,
     watchdogMs,
+    connectTimeoutMs,
     handle: async (endpoint, payload) => {
       handled.push([endpoint, payload])
       return { ok: true, value: { endpoint } }
@@ -222,7 +223,7 @@ test('a relay address yields both the socket and the desktop sign-in URL', () =>
   assert.equal(relayUrls('not a url'), undefined)
 })
 
-function relayHarness({ config = {}, fetchImpl, env = {}, defaultUrl } = {}) {
+function relayHarness({ config = {}, fetchImpl, env = {}, defaultUrl, machineId = 'machine-test', readOnly } = {}) {
   FakeSocket.instances = []
   const home = mkdtempSync(join(tmpdir(), 'ds-bot-relay-'))
   const controller = createRelayController({
@@ -235,6 +236,8 @@ function relayHarness({ config = {}, fetchImpl, env = {}, defaultUrl } = {}) {
     setTimeoutImpl: () => 0,
     clearTimeoutImpl: () => {},
     defaultDeviceName: 'Test Mac',
+    machineId,
+    readOnly,
     env,
     defaultUrl,
     fetchImpl: fetchImpl ?? (async () => ({
@@ -256,7 +259,7 @@ test('an unbound controller reports the address but no account', (t) => {
   t.after(h.cleanup)
   assert.deepEqual(h.controller.status(), {
     configured: true, bound: false, username: '', url: 'https://relay.test',
-    deviceName: 'Test Mac', relayConnected: false,
+    deviceName: 'Test Mac', relayConnected: false, state: 'idle',
   })
   assert.equal(FakeSocket.instances.length, 0)
 })
@@ -369,4 +372,156 @@ test('signing out stops the connector and overrides a profile token', async (t) 
   // A profile that still carries a token cannot turn it back on; the account must sign in.
   h.controller.start()
   assert.equal(FakeSocket.instances.length, 1)
+})
+
+// --- Connector states ---------------------------------------------------------------------
+
+test('a socket that never opens is abandoned and retried', () => {
+  const { connector, pending, runLastTimer, socket } = harness({ connectTimeoutMs: 20_000 })
+  connector.start()
+  const ws = socket()
+  // Nothing opened, so the only pending timer is the connect deadline.
+  assert.equal(pending.size, 1)
+  runLastTimer()
+  assert.equal(ws.abandoned, true)
+  assert.equal(ws.readyState, 3)
+  // The retry replaces the deadline.
+  assert.equal(pending.size, 1)
+  connector.stop()
+})
+
+test('an open socket reports itself connected', () => {
+  const { connector, socket } = harness()
+  connector.start()
+  assert.equal(connector.state, 'connecting')
+  socket().open()
+  assert.equal(connector.state, 'connected')
+  assert.equal(connector.connected, true)
+  connector.stop()
+})
+
+test('a duplicate device id parks the connector instead of stopping it', () => {
+  const { connector, pending, runLastTimer, socket } = harness()
+  connector.start()
+  const ws = socket()
+  ws.open()
+  ws.emit('close', { code: CLOSE_DUPLICATE_DEVICE })
+  // Retrying is right here (the other host may quit), but slowly, and the reason is visible.
+  assert.equal(connector.state, 'occupied')
+  assert.equal(pending.size, 1)
+  connector.start()
+  assert.equal(FakeSocket.instances.length, 1)
+  runLastTimer()
+  assert.equal(FakeSocket.instances.length, 2)
+  connector.stop()
+})
+
+test('a rejected token stops the connector for good', () => {
+  const { connector, pending, socket } = harness()
+  connector.start()
+  const ws = socket()
+  ws.open()
+  ws.emit('close', { code: CLOSE_BAD_TOKEN })
+  assert.equal(connector.state, 'expired')
+  assert.equal(pending.size, 0)
+  connector.start()
+  assert.equal(FakeSocket.instances.length, 1)
+})
+
+// --- Single instance and manual retry ----------------------------------------------------
+
+test('a read-only host does not start the connector and says so', (t) => {
+  const h = relayHarness({ config: { token: 'tok-123' }, readOnly: () => 'another dsh owns the team' })
+  t.after(h.cleanup)
+  h.controller.start()
+  assert.equal(FakeSocket.instances.length, 0)
+  assert.equal(h.controller.status().state, 'read-only')
+  h.controller.stop()
+  // The same controller, once the lock is gone elsewhere, connects on a manual retry.
+  FakeSocket.instances = []
+  const writable = relayHarness({ config: { token: 'tok-123' } })
+  t.after(writable.cleanup)
+  writable.controller.reconnect()
+  assert.equal(FakeSocket.instances.length, 1)
+  writable.controller.stop()
+})
+
+test('reconnect drops the backoff and dials again', (t) => {
+  const h = relayHarness({ config: { token: 'tok-123' } })
+  t.after(h.cleanup)
+  h.controller.start()
+  const first = h.socket()
+  first.open()
+  first.emit('close', { code: CLOSE_DUPLICATE_DEVICE })
+  assert.equal(h.controller.status().state, 'occupied')
+  h.controller.reconnect()
+  assert.equal(FakeSocket.instances.length, 2)
+  assert.equal(first.abandoned, true)
+  h.controller.stop()
+})
+
+// --- Machine identity migration -----------------------------------------------------------
+
+function identityHarness({ saved, machineId, name = 'Test Mac' }) {
+  FakeSocket.instances = []
+  const home = mkdtempSync(join(tmpdir(), 'ds-bot-relay-id-'))
+  if (saved !== undefined) writeFileSync(join(home, 'relay.json'), JSON.stringify(saved))
+  const controller = createRelayController({
+    home,
+    config: { url: 'https://relay.test', token: 'tok-123' },
+    handle: async () => ({ ok: true, value: null }),
+    WebSocketImpl: FakeSocket,
+    logger: { warn() {} },
+    defaultDeviceName: name,
+    machineId,
+    env: {},
+  })
+  return {
+    controller,
+    saved: () => JSON.parse(readFileSync(join(home, 'relay.json'), 'utf8')),
+    cleanup: () => rmSync(home, { recursive: true, force: true }),
+  }
+}
+
+test('a file without a machine id keeps its device id and gains one', (t) => {
+  const h = identityHarness({ saved: { deviceId: 'old-id' }, machineId: 'machine-a' })
+  t.after(h.cleanup)
+  h.controller.start()
+  assert.equal(h.saved().deviceId, 'old-id')
+  assert.equal(h.saved().machineId, 'machine-a')
+  h.controller.stop()
+})
+
+test('a file copied from another machine gets a fresh device id', (t) => {
+  const h = identityHarness({ saved: { deviceId: 'old-id', machineId: 'machine-b' }, machineId: 'machine-a' })
+  t.after(h.cleanup)
+  h.controller.start()
+  assert.notEqual(h.saved().deviceId, 'old-id')
+  assert.equal(h.saved().deviceId.length > 0, true)
+  assert.equal(h.saved().machineId, 'machine-a')
+  h.controller.stop()
+})
+
+test('the same machine keeps its pairing id', (t) => {
+  const h = identityHarness({ saved: { deviceId: 'old-id', machineId: 'machine-a' }, machineId: 'machine-a' })
+  t.after(h.cleanup)
+  h.controller.start()
+  assert.equal(h.saved().deviceId, 'old-id')
+  h.controller.stop()
+})
+
+test('without a machine id the pairing id is left exactly as it was', (t) => {
+  const h = identityHarness({ saved: { deviceId: 'old-id' }, machineId: '' })
+  t.after(h.cleanup)
+  h.controller.start()
+  assert.deepEqual(h.saved(), { deviceId: 'old-id' })
+  h.controller.stop()
+})
+
+test('the bogon placeholder name is replaced by the computer name', (t) => {
+  const h = identityHarness({ saved: { deviceId: 'old-id', deviceName: hostname() }, machineId: 'machine-a', name: "Lininn's MacBook Pro" })
+  t.after(h.cleanup)
+  assert.equal(h.controller.status().deviceName, "Lininn's MacBook Pro")
+  assert.equal(h.saved().deviceName, "Lininn's MacBook Pro")
+  h.controller.stop()
 })

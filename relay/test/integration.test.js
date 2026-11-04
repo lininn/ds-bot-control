@@ -184,6 +184,24 @@ test('a logged-in phone drives a fake desktop through the relay', { timeout: 20_
   }
   assert.equal(text.includes('event: hello'), true)
   assert.equal(text.includes('event: live'), true)
+
+  // A device cookie naming a desktop that is no longer paired is cleared on the way to the
+  // picker, so the phone does not keep retrying a dead selection.
+  connector.close()
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const live = await fetch(`${base}/api/devices`, { headers: { cookie } }).then(response => response.json())
+    if (live.devices.length === 0) break
+    await sleep(20)
+  }
+  const stale = await fetch(`${base}/`, {
+    headers: { cookie: `${cookie}; relay_device=gone` },
+    redirect: 'manual',
+  })
+  assert.equal(stale.status, 303)
+  assert.equal(stale.headers.get('location'), '/devices')
+  const cleared = stale.headers.getSetCookie().join('; ')
+  assert.match(cleared, /relay_device=/)
+  assert.match(cleared, /Max-Age=0/)
 })
 
 test('login is refused when the account has no connected desktop', { timeout: 15_000 }, async (t) => {

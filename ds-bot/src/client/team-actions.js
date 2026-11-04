@@ -123,6 +123,7 @@ export function teamActions({ call, after, partFor, roster, ui, live, cards, hel
     relayStatus: () => call('relay-status'),
     relayLogin: payload => call('relay-login', payload),
     relayLogout: () => call('relay-logout'),
+    relayReconnect: () => call('relay-reconnect'),
     saveCapability: capability => after(call('capability-save', capability)),
     deleteCapability: name => after(call('capability-delete', { name })),
     approveCapability: name => after(call('capability-approve', { name })),

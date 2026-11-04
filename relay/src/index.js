@@ -3,7 +3,7 @@
 import http from 'node:http'
 import { WebSocketServer } from 'ws'
 import { config, checkConfig } from './config.js'
-import { DEVICE_COOKIE, blogAuth, blogVerify, clearedCookies, deviceCookie, loginAllowed, makeSession, readSession, sessionCookie } from './auth.js'
+import { DEVICE_COOKIE, blogAuth, blogVerify, clearedCookies, clearedDeviceCookie, deviceCookie, loginAllowed, makeSession, readSession, sessionCookie } from './auth.js'
 import { Hub } from './connector.js'
 import { isForbiddenEndpoint } from './protocol.js'
 import { hasVersion, isVersion, listVersions, mismatchPage, serveFile } from './static.js'
@@ -30,6 +30,14 @@ function selectedDevice(req, session) {
   }
   if (devices.length === 1) return hub.get(session.u, devices[0].deviceId)
   return undefined
+}
+
+// A cookie naming a device that is no longer paired (the desktop was reset, the team folder
+// was copied, or it simply went away) must not keep the phone circling the picker: clear it
+// with the redirect so the next visit starts from the current list.
+function staleDeviceCookie(req, session) {
+  const chosen = parseCookies(req)[DEVICE_COOKIE]
+  return typeof chosen === 'string' && chosen !== '' && hub.get(session.u, chosen) === undefined
 }
 
 function isForm(req) {
@@ -405,7 +413,7 @@ async function route(req, res) {
   if (pathname === '/' && method === 'GET') {
     if (session === null) return redirect(res, '/login')
     const conn = selectedDevice(req, session)
-    if (conn === undefined) return redirect(res, '/devices')
+    if (conn === undefined) return redirect(res, '/devices', staleDeviceCookie(req, session) ? [clearedDeviceCookie()] : [])
     if (!hasVersion(config.webStaticDir, conn.version)) {
       return sendHtml(res, 409, mismatchPage(listVersions(config.webStaticDir), conn.version))
     }

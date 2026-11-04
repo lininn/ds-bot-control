@@ -2,6 +2,16 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
+## [0.2.14] - 2026-11-04
+
+### Fixed
+
+- **Remote control no longer sits on "Reconnecting…" forever.** When the relay said another host already owned this computer's pairing id, the connector gave up for good while Settings kept drawing a reconnecting state, so the app looked busy but had no connection. It now waits with a long backoff, shows **another window is controlling this computer**, and reconnects at once from **Reconnect now**. A rejected token is reported as **sign-in expired** instead of being retried.
+- **A second window no longer fights over the same device.** Only the host that owns the team runs the connector; another window shows why and can take over once the first one closes. A connection that never finishes opening is now abandoned after 20 seconds and retried.
+- **The pairing id follows the machine, not the folder.** `relay.json` records the machine it belongs to, so a team folder copied to another computer gets its own device instead of taking turns kicking the original offline. Existing installs keep the id they have.
+- **This computer is named the way the system names it.** Settings and the phone's device picker show the computer name (for example `lininn的MacBook Pro`) instead of a macOS hostname such as `bogon`; an existing `bogon` name migrates on its own.
+- **The phone forgets a device that is gone.** When the chosen desktop is no longer paired, the relay clears the device cookie on its way to the picker instead of keeping a dead selection.
+
 ## [0.2.13] - 2026-11-04
 
 ### Fixed

@@ -54,6 +54,11 @@ export function deviceCookie(deviceId) {
   return cookieHeader(DEVICE_COOKIE, deviceId, { maxAgeSec: config.sessionTtlMs / 1000, secure: config.cookieSecure })
 }
 
+// Forget a chosen device without touching the session: the device it named is no longer online.
+export function clearedDeviceCookie() {
+  return cookieHeader(DEVICE_COOKIE, '', { maxAgeSec: 0, secure: config.cookieSecure })
+}
+
 export function clearedCookies() {
   return [cookieHeader(SESSION_COOKIE, '', { maxAgeSec: 0, secure: config.cookieSecure }), cookieHeader(DEVICE_COOKIE, '', { maxAgeSec: 0, secure: config.cookieSecure })]
 }

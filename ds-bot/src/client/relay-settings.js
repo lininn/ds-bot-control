@@ -55,17 +55,44 @@ export function RelayPage({ actions, Section, Row }) {
       .finally(() => setBusy(false))
   }
 
+  const reconnect = () => {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    actions.relayReconnect()
+      .then(next => setStatus(next))
+      .catch(failure => setError(failure?.message ?? String(failure)))
+      .finally(() => setBusy(false))
+  }
+
   if (status === null) {
     return h(Section, { title: t('Remote control') }, h('p', { className: 'bt-set-hint' }, t('Checking…')))
   }
 
   if (status.bound) {
-    const online = status.relayConnected
+    // `state` says why the connector is not online; an older host only sends relayConnected.
+    const state = status.state ?? (status.relayConnected ? 'connected' : 'reconnecting')
+    const label = {
+      connected: t('Connected'),
+      connecting: t('Connecting'),
+      reconnecting: t('Reconnecting…'),
+      occupied: t('This device is open in another window'),
+      'read-only': t('Remote control is off in this window'),
+      expired: t('Sign-in expired. Sign in again.'),
+    }[state] ?? t('Reconnecting…')
+    // A rejected token cannot be retried; only a sign-in clears it. Everything else can.
+    const retryable = state === 'reconnecting' || state === 'occupied' || state === 'read-only'
     return h(Section, { title: t('Remote control') },
       h(Row, {
         label: t('Signed in as {name}', { name: status.username || t('this computer') }),
         hint: t('Open the relay on your phone and sign in with the same account.'),
-      }, h('span', { className: 'bt-set-hint', role: 'status' }, online ? t('Connected') : t('Reconnecting…'))),
+      }, h('span', { className: 'bt-set-hint', role: 'status' }, label)),
+      retryable
+        ? h('div', { className: 'bt-set-row' },
+          h('div', { className: 'bt-set-copy' }),
+          h('div', { className: 'bt-set-control' },
+            h('button', { type: 'button', className: 'bt-soft bt-soft-sm', disabled: busy, onClick: reconnect }, t('Reconnect now'))))
+        : null,
       h(Row, { label: t('This computer'), hint: status.deviceName }, null),
       h('div', { className: 'bt-set-row' },
         h('div', { className: 'bt-set-copy' }, h('span', null, t('Turn off remote control'))),
@@ -76,6 +103,7 @@ export function RelayPage({ actions, Section, Row }) {
 
   return h(Section, { title: t('Remote control') },
     h('p', { className: 'bt-set-hint' }, t('Sign in with your account to let your phone control this computer. The phone signs in with the same account.')),
+    status.state === 'read-only' ? h('p', { className: 'bt-set-hint' }, t('Remote control is off in this window')) : null,
     h(Row, { label: t('Relay address'), hint: t('For example https://ds.example.com') },
       h('label', { className: 'bt-q-field' },
         h('input', {
