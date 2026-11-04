@@ -95,6 +95,19 @@ test('a live reasoning row titles "Thinking" with a ticking clock', () => {
   assert.equal(title.children[1]?.props.at <= Date.now() - 4000, true)
 })
 
+test('a group post renders under its sender\'s name', () => {
+  const room = { id: 'r1', name: 'Ops', members: ['b'] }
+  const groupRoster = { ...roster, roomsById: { r1: room } }
+  const items = [
+    { kind: 'user', text: 'hello', time: MINUTE },
+    { kind: 'group', text: 'hi all', botId: 'b', name: 'Writer', roomId: 'r1', time: 2 * MINUTE },
+  ]
+  const rows = [...ChatRows({ items, sessionId: 'r1', roster: groupRoster, actions: {} })]
+  assert.deepEqual(shape(rows), ['EarlierUser', 'GroupMessage'])
+  const rendered = rows[1].type(rows[1].props)
+  assert.equal(rendered.props.className, 'bt-group-msg')
+})
+
 test('a settled reasoning row shows the turn’s thinking time when known', () => {
   const timed = ThinkingRow({ text: 'one\ntwo', ms: 12_000 })
   const [title] = timed.children

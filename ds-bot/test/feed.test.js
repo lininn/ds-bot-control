@@ -14,7 +14,12 @@ const TEAM = {
     m1: { id: 'm1', sessionId: 'm1c', segments: [{ sessionId: 'm1', endedAt: 50 }], name: 'Chief', role: 'Chief of Staff', instructions: '', createdAt: 1 },
     b2: { id: 'b2', sessionId: 'b2', name: 'Writer', role: 'Writer', instructions: '', createdAt: 2 },
   },
-  rooms: {},
+  rooms: {
+    r1: {
+      id: 'r1', name: 'Ops', named: true, members: ['m1', 'b2'], admin: 'm1', mode: 'admin',
+      sessionId: 'gr', sessions: { m1: 'gm1', b2: 'gm2' }, segments: {}, log: [], seq: 0,
+    },
+  },
   exchanges: [],
   // Chief's turn 7 answers another Bot, so the chat does not show it.
   exchangeTurns: { m1c: [7] },
@@ -23,6 +28,11 @@ const TEAM = {
 
 const userMessage = (text, time) => ({ type: 'user/message', time, data: { source: { kind: 'user' }, content: [{ type: 'text', text }] } })
 const botMessage = (text, time, turn = 1) => ({ type: 'assistant/message', time, data: { turn, message: { content: [{ type: 'text', text }] } } })
+// A member's post, as the relay writes it into the group's relay Session.
+const botPost = (name, senderSessionId, roomId, text, time) => ({
+  type: 'user/message', time,
+  data: { source: { kind: 'bot', role: 'post', senderName: name, senderSessionId, roomId }, content: [{ type: 'text', text: `[Group post from ${name}]\n${text}` }] },
+})
 
 function start({ pages = {}, services = {} } = {}) {
   const home = mkdtempSync(join(tmpdir(), 'ds-bot-feed-'))
@@ -122,6 +132,29 @@ test('the live feed tells a window about saves, new chat entries and the reply b
   assert.equal(await next(), undefined)
 })
 
+test('the live feed brings a group\'s messages, and nothing from a member\'s own Session', async (t) => {
+  const { ctx, call, stop, routes } = start()
+  t.after(stop)
+  await call('state')
+  const abort = new AbortController()
+  t.after(() => abort.abort())
+  const response = await routes['/api/bot/feed'].fetch(new Request('http://localhost/api/bot/feed', { signal: abort.signal }))
+  const next = reader(response)
+  assert.equal((await next()).event, 'hello')
+  const onEvent = ctx.listeners.get('session/event').at(-1)
+
+  onEvent({ id: 'gr' }, botPost('Writer', 'b2', 'r1', 'hi all', 70))
+  assert.deepEqual(await next(), { event: 'message', data: { roomId: 'r1', sessionId: 'gr', item: { kind: 'group', text: 'hi all', botId: 'b2', name: 'Writer', roomId: 'r1', time: 70 } } })
+  // A member's own group Session and an archived part are not the group conversation.
+  onEvent({ id: 'gm1' }, botPost('Writer', 'b2', 'r1', 'hidden', 71))
+  onEvent({ id: 'm1' }, userMessage('old', 1))
+  onEvent({ id: 'gr' }, userMessage('hello', 72))
+  assert.deepEqual(await next(), { event: 'message', data: { roomId: 'r1', sessionId: 'gr', item: { kind: 'user', text: 'hello', time: 72 } } })
+
+  abort.abort()
+  assert.equal(await next(), undefined)
+})
+
 test('a window that stops reading the feed is dropped', { timeout: 10_000 }, async (t) => {
   const { ctx, call, stop, routes } = start()
   t.after(stop)
@@ -160,6 +193,36 @@ test('the chat endpoint pages a Bot\'s own chat from the newest part back', asyn
   const third = (await call('chat', { botId: 'm1', cursor: second.cursor })).value
   assert.deepEqual([third.items, third.cursor], [[{ kind: 'user', text: 'long ago', time: 5, seq: 3 }], null])
   assert.equal((await call('chat', { botId: 'nobody' })).error.code, 'bot/not-found')
+})
+
+test('the room-chat endpoint pages a group\'s relay conversation, posts included', async (t) => {
+  const record = (event, seq) => ({ event: { ...event, seq } })
+  const post = (text, time) => botPost('Writer', 'b2', 'r1', text, time)
+  const { call, stop } = start({
+    pages: {
+      'gr:end': {
+        records: [record(userMessage('hello', 70), 41), record(post('hi all', 71), 42)],
+        hasMore: true,
+      },
+      'gr:41': { records: [record(userMessage('first', 60), 40)], hasMore: false },
+    },
+  })
+  t.after(stop)
+  await call('state')
+  const first = (await call('room-chat', { roomId: 'r1' })).value
+  assert.deepEqual(first, {
+    sessionId: 'gr',
+    items: [
+      { kind: 'user', text: 'hello', time: 70, seq: 41 },
+      { kind: 'group', text: 'hi all', botId: 'b2', name: 'Writer', roomId: 'r1', time: 71, seq: 42 },
+    ],
+    cursor: { beforeSeq: 41 },
+  })
+  const second = (await call('room-chat', { roomId: 'r1', cursor: first.cursor })).value
+  assert.deepEqual([second.items, second.cursor], [[{ kind: 'user', text: 'first', time: 60, seq: 40 }], null])
+  // A relay Session id opens the same group; an unknown one is refused.
+  assert.equal((await call('room-chat', { roomId: 'gr' })).value.sessionId, 'gr')
+  assert.equal((await call('room-chat', { roomId: 'nobody' })).error.code, 'bot/not-found')
 })
 
 test('a show_view call in a part reads back as a view row with its blueprint', async (t) => {

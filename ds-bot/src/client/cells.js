@@ -295,7 +295,7 @@ function SpeakerHead({ bot, time }) {
 // One Bot message inside a group chat: avatar, name (with its group role), when it ran
 // and how long it took, bubble. The flat layout moves the avatar from beside the last
 // bubble to the head of the name row, so the text below runs the whole width.
-function GroupMessage({ bot, text, texts = [text], room, roster, actions, msgKey, useUi, whole, time, duration }) {
+export function GroupMessage({ bot, text, texts = [text], room, roster, actions, msgKey, useUi, whole, time, duration }) {
   const lead = h('button', { type: 'button', className: 'bt-lead', 'aria-label': t("Open {name}'s chat", { name: bot.name }), onClick: () => actions.openSession(bot.id) },
     h(BotMark, { bot, size: 22 }))
   const flat = layoutOf(roster.prefs) === 'flat'
@@ -535,6 +535,17 @@ function chatRow(row, key, { sessionId, selfId, roster, actions, useUi, onBtwDel
       return speaker ? h(Fragment, { key }, h(SpeakerHead, { bot: speaker, time: row.time }), bubbles) : bubbles
     }
     case 'btw': return h(BtwCardView, { key, card: row.card, sessionId, actions, onDeleted: onBtwDelete })
+    // A member's post in a group chat: named, with its own avatar, as the desktop's
+    // own group view draws it.
+    case 'group': {
+      const sender = roster.byId[row.botId] ?? { id: row.botId ?? 'group', name: row.name ?? t('a Bot'), color: 'gray' }
+      return h(GroupMessage, {
+        key, bot: sender, text: row.text,
+        room: roster.roomsById[row.roomId] ?? roster.roomsById[sessionId],
+        roster, actions, useUi, time: row.time,
+        msgKey: useUi ? `${row.roomId ?? sessionId}:${row.time}` : undefined,
+      })
+    }
     case 'event': {
       if (row.role === 'report') return h(GroupEvent, { key, prefix: t('Replies from'), room: roster.roomsById[row.roomId], name: t('a group chat'), roster, actions })
       const other = roster.byId[row.botId] ?? { id: row.botId, name: row.name ?? t('a Bot'), color: 'gray' }

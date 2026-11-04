@@ -1265,7 +1265,9 @@ export function install(rt) {
   // Earlier parts of a Bot's own chat, newest page first, for the chat to show above
   // the current part as one conversation.
   const EARLIER_PAGE = 60
-  function displayItems(partId, events, session, seedTurn) {
+  // `group` reads a group's relay Session: a member's post carries the text it wrote,
+  // where a Bot's own chat only ever sees replies addressed to it.
+  function displayItems(partId, events, session, seedTurn, { group = false } = {}) {
     const hidden = new Set(state.exchangeTurns[partId] ?? [])
     const items = []
     // The turn/start still in effect. A steered or queued user message stays in
@@ -1318,6 +1320,10 @@ export function install(rt) {
         if (reply?.questions !== undefined) stamp(event, { kind: 'answer', questions: reply.questions, answers: reply.answers, time: event.time })
         else if (reply?.handoff !== undefined) stamp(event, { kind: 'answer', text: replyText(text), handoff: reply.handoff, time: event.time })
         else if (reply?.views !== undefined) stamp(event, { kind: 'answer', text: replyText(text), views: reply.views, answers: reply.answers, time: event.time })
+      } else if (group && source?.kind === SOURCE_KIND && source.role === 'post') {
+        // The post opens with its sender's name line, as the relay wrote it.
+        const post = textOf(event.data.content).replace(/^\[[^\]\r\n]*\](?:\r?\n)?/, '').trim()
+        if (post !== '') stamp(event, { kind: 'group', text: post, botId: source.senderSessionId ?? null, name: source.senderName ?? null, roomId: source.roomId ?? null, time: event.time })
       } else if (source?.kind === SOURCE_KIND && source.handoff !== true && source.deferred !== true && ['request', 'reply', 'report', 'stopped'].includes(source.role)) {
         stamp(event, { kind: 'event', role: source.role, botId: source.senderSessionId ?? null, name: source.senderName ?? null, roomId: source.roomId ?? null, time: event.time })
       }
@@ -1389,5 +1395,46 @@ export function install(rt) {
     return { sessionId: parts.at(-1).sessionId, ...(await partPage(parts, index, cursor)) }
   }
 
-  Object.assign(rt, { clock, partsOf, historyEntry, partLines, noteText, earlierPage, chatPage, displayItems, followFolder, heldBack, switchJobs: () => switches.values() })
+  // A group's conversation, newest page first: its relay Session keeps the user's
+  // messages and every member's post, so a window that draws the group itself can
+  // page it the way it pages a Bot's own chat.
+  async function roomPage(roomId, cursor) {
+    const room = rt.roomOf(roomId)
+    if (room === undefined) throw Object.assign(new Error('Unknown group'), { code: 'bot/not-found' })
+    const sessionId = rt.relaySessionOf(room)
+    const signal = AbortSignal.timeout(HISTORY_TIMEOUT_MS)
+    const agent = await rt.resolveAgent(sessionId).catch(() => undefined)
+    const page = await ctx.sessionController.page({
+      address: { kind: 'session', sessionId },
+      ...(agent ? { throughSeq: Number(agent.session.seq) - 1 } : {}),
+      ...(Number.isInteger(cursor?.beforeSeq) ? { beforeSeq: cursor.beforeSeq } : {}),
+      maxMessages: EARLIER_PAGE,
+    }, signal)
+    const events = page.records.map(record => record.event)
+    let seedTurn
+    if (agent === undefined) {
+      // Without the live session's projection, walk back to the turn the page sits in.
+      let before = events[0]?.seq
+      while (Number.isInteger(before) && seedTurn === undefined) {
+        const back = await ctx.sessionController.page({
+          address: { kind: 'session', sessionId },
+          beforeSeq: before,
+          maxMessages: EARLIER_PAGE,
+        }, signal)
+        const starts = back.records.map(record => record.event).filter(event => event.type === 'turn/start')
+        if (starts.length > 0) {
+          const last = starts.at(-1).data?.turn
+          if (Number.isInteger(last)) seedTurn = last
+          break
+        }
+        if (!back.hasMore) break
+        before = back.records[0]?.event?.seq
+      }
+    }
+    const items = displayItems(sessionId, events, agent?.session, seedTurn, { group: true })
+    const more = page.hasMore && events.length > 0
+    return { sessionId, items, cursor: more ? { beforeSeq: events[0].seq } : null }
+  }
+
+  Object.assign(rt, { clock, partsOf, historyEntry, partLines, noteText, earlierPage, chatPage, roomPage, displayItems, followFolder, heldBack, switchJobs: () => switches.values() })
 }

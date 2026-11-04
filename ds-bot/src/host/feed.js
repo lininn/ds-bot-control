@@ -62,9 +62,17 @@ export function install(rt) {
   ctx.on('session/event', (session, event) => {
     if (!watching()) return
     const botId = rt.chatOwners.get(session.id)
-    if (botId === undefined) return
-    for (const item of rt.displayItems(session.id, [event])) publish('message', { botId, sessionId: session.id, item })
-    if (event.type === 'tool/call') live()
+    if (botId !== undefined) {
+      for (const item of rt.displayItems(session.id, [event])) publish('message', { botId, sessionId: session.id, item })
+      if (event.type === 'tool/call') live()
+      return
+    }
+    // A group's relay Session holds the user's messages and the members' posts; a window
+    // that draws the group itself follows it too. A member's own group Session does not
+    // (only the relay Session is the group's conversation).
+    const room = rt.roomOf(session.id)
+    if (room === undefined || rt.relaySessionOf(room) !== session.id) return
+    for (const item of rt.displayItems(session.id, [event], undefined, undefined, { group: true })) publish('message', { roomId: room.id, sessionId: session.id, item })
   })
 
   // Attempts being streamed, by id. A turn that answers another Bot is hidden from the

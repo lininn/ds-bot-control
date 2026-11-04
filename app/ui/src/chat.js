@@ -11,10 +11,12 @@ import { PendingQuestion } from '../../../ds-bot/src/client/questions.js'
 const FOLLOW_PX = 80
 const sameItem = (a, b) => a.kind === b.kind && a.time === b.time && a.text === b.text
 
-// A Bot's own chat: pages from the `chat` endpoint, new entries and the reply being
-// written from the feed. Entries that arrive while the first page loads wait for it.
-function useChat(botId, part, feed) {
-  const [view, setView] = useState({ sessionId: null, items: [], cursor: null, loading: botId !== undefined, failed: false })
+// A Bot's own chat, or a group's: pages from the `chat` / `room-chat` endpoint, new
+// entries and the reply being written from the feed. Entries that arrive while the
+// first page loads wait for it.
+function useChat(botId, roomId, part, feed) {
+  const visible = botId !== undefined || roomId !== undefined
+  const [view, setView] = useState({ sessionId: null, items: [], cursor: null, loading: visible, failed: false })
   const [stream, setStream] = useState(null)
   const [pending, setPending] = useState([])
   const ready = useRef(false)
@@ -23,12 +25,14 @@ function useChat(botId, part, feed) {
   const keep = useRef(null)
 
   const load = useCallback(async (cursor, scroller) => {
-    if (busy.current || botId === undefined) return
+    if (busy.current || !visible) return
     busy.current = true
     if (cursor === undefined) ready.current = false
     setView(current => ({ ...current, loading: true, failed: false }))
     try {
-      const page = await call('chat', { botId, ...(cursor ? { cursor } : {}) })
+      const page = botId !== undefined
+        ? await call('chat', { botId, ...(cursor ? { cursor } : {}) })
+        : await call('room-chat', { roomId, ...(cursor ? { cursor } : {}) })
       if (cursor === undefined) {
         const later = early.current.filter(entry => entry.sessionId === page.sessionId && !page.items.some(item => sameItem(item, entry.item)))
         early.current = []
@@ -45,7 +49,7 @@ function useChat(botId, part, feed) {
     } finally {
       busy.current = false
     }
-  }, [botId])
+  }, [botId, roomId, visible])
 
   // A new part starts the chat over.
   useEffect(() => { void load(undefined) }, [load, part])
@@ -53,7 +57,8 @@ function useChat(botId, part, feed) {
   useEffect(() => feed.on((event, data) => {
     // The feed came back after a break: entries may have been missed.
     if (event === 'hello') { if (ready.current) void load(undefined); return }
-    if (botId === undefined || data?.botId !== botId) return
+    if (!visible) return
+    if (botId !== undefined ? data?.botId !== botId : data?.roomId !== roomId) return
     if (event === 'message') {
       if (!ready.current) { early.current.push(data); return }
       setView(current => (data.sessionId !== current.sessionId || current.items.some(item => sameItem(item, data.item)) ? current : { ...current, items: [...current.items, data.item] }))
@@ -69,7 +74,7 @@ function useChat(botId, part, feed) {
       else if (data.phase === 'end') setStream(current => (current?.attemptId === data.attemptId ? null : current))
       else setStream(current => (current?.attemptId === data.attemptId ? { ...current, text: current.text + data.text } : current))
     }
-  }), [feed, botId, load])
+  }), [feed, botId, roomId, visible, load])
 
   // Shown at once: the message can come back on the feed before the request returns.
   const send = async (text, actions, sessionId) => {
@@ -152,8 +157,9 @@ export function Chat({ sessionId, team }) {
   const { actions, hooks, chat: feed } = team
   const roster = hooks.useRoster(value => value)
   const bot = roster.byId[sessionId]
-  const name = bot?.name ?? roster.roomsById[sessionId]?.name ?? ''
-  const { view, stream, pending, load, send, keep } = useChat(bot?.id, sessionId, feed)
+  const room = roster.roomsById[sessionId]
+  const name = bot?.name ?? room?.name ?? ''
+  const { view, stream, pending, load, send, keep } = useChat(bot?.id, room?.id, sessionId, feed)
   const scroller = useRef(null)
   const follow = useRef(true)
   const question = roster.questions?.[sessionId]

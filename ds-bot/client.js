@@ -7828,6 +7828,22 @@ function chatRow(row, key, { sessionId, selfId, roster, actions, useUi, onBtwDel
     }
     case "btw":
       return (0, import_react13.createElement)(BtwCardView, { key, card: row.card, sessionId, actions, onDeleted: onBtwDelete });
+    // A member's post in a group chat: named, with its own avatar, as the desktop's
+    // own group view draws it.
+    case "group": {
+      const sender = roster.byId[row.botId] ?? { id: row.botId ?? "group", name: row.name ?? t("a Bot"), color: "gray" };
+      return (0, import_react13.createElement)(GroupMessage, {
+        key,
+        bot: sender,
+        text: row.text,
+        room: roster.roomsById[row.roomId] ?? roster.roomsById[sessionId],
+        roster,
+        actions,
+        useUi,
+        time: row.time,
+        msgKey: useUi ? `${row.roomId ?? sessionId}:${row.time}` : void 0
+      });
+    }
     case "event": {
       if (row.role === "report") return (0, import_react13.createElement)(GroupEvent, { key, prefix: t("Replies from"), room: roster.roomsById[row.roomId], name: t("a group chat"), roster, actions });
       const other = roster.byId[row.botId] ?? { id: row.botId, name: row.name ?? t("a Bot"), color: "gray" };

@@ -208,6 +208,9 @@ export function install(rt) {
         case 'chat':
           await rt.load()
           return ok(await rt.chatPage(String(body.botId ?? ''), body.cursor ?? undefined))
+        case 'room-chat':
+          await rt.load()
+          return ok(await rt.roomPage(String(body.roomId ?? ''), body.cursor ?? undefined))
         // DSH's own whole-log figures for the current part of a Bot's chat, the ones its
         // status bar shows; a window without that bar shows them in the Bot's details.
         case 'run-stats': {

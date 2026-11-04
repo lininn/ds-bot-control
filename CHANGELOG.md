@@ -2,6 +2,12 @@
 
 All notable changes to DS Bot are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor version can contain breaking changes.
 
+## [0.2.13] - 2026-11-04
+
+### Fixed
+
+- **Group chats show their messages in the window and on the phone.** The window drew a group's header and sidebar row but left the conversation empty: it only ever loaded a Bot's own chat. A group now pages its relay Session, which holds the user's messages and every member's posts, and the live feed brings new group messages as they arrive. Each post shows its sender, as the team's group view does.
+
 ## [0.2.12] - 2026-11-03
 
 ### Fixed
