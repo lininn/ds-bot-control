@@ -1,6 +1,6 @@
 // Generated from src/client by `npm run build` (scripts/build-client.mjs). Do not edit by hand.
 window.__ModuleLoader__.load({
-  id: 'ds-bot',
+  id: "@lininn/ds-bot",
   factory: (require) => {
 const module = { exports: {} }
 var __create = Object.create;
