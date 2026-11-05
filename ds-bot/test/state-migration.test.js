@@ -120,9 +120,13 @@ test('a migration that cannot be backed up leaves state.json untouched', { skip:
   const home = homeWith(team())
   const original = readFileSync(join(home, 'state.json'), 'utf8')
   chmodSync(home, 0o500)
-  t.after(() => { chmodSync(home, 0o700); rmSync(home, { recursive: true, force: true, maxRetries: 5 }) })
   const { ctx, call } = open(home)
-  t.after(() => ctx.dispose())
+  // Dispose first: the plugin may still write under the home while it shuts down.
+  t.after(async () => {
+    await ctx.dispose()
+    chmodSync(home, 0o700)
+    rmSync(home, { recursive: true, force: true, maxRetries: 5 })
+  })
 
   const answer = await call('state', {})
   assert.notEqual(answer.ok, true)

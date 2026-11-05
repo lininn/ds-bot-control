@@ -48,7 +48,7 @@ test('the table lists Windows first, then macOS and Linux, and says which files 
   assert.match(rows[3], /^\| Linux, AppImage .*linux-x86_64\.AppImage.*\| 400 MB \|$/u)
   assert.match(rows[4], /^\| Linux, deb .*linux-amd64\.deb.*\| 500 MB \|$/u)
   assert.match(block, /^## Download \/ 下载$/mu)
-  assert.match(block, /The `\.blockmap`, `latest\*\.yml` and `ds-bot-\*\.tgz` files and the source code archives are for updates and the plugin/u)
+  assert.match(block, /The `\.blockmap`, `latest\*\.yml` and `lininn-ds-bot-\*\.tgz` files and the source code archives are for updates and the plugin/u)
   assert.match(block, /\[SHA256SUMS\.txt\]\(https:\/\/github\.com\/Fei2411\/DS-Bot\/releases\/download\/v0\.2\.3\/SHA256SUMS\.txt\)/u)
   assert.doesNotMatch(block, /Mirror/u)
 })
@@ -145,7 +145,7 @@ test('the release becomes Latest last, after every job that attaches files', () 
 test('both READMEs open with the same download block, a Windows link and the not-official line', () => {
   for (const file of ['../../README.md', '../../README.zh.md']) {
     const top = read(file).split(/\r?\n/u).slice(0, 10).join('\n')
-    assert.match(top, /\(https:\/\/github\.com\/Fei2411\/DS-Bot\/releases\/latest\)/u, file)
+    assert.match(top, /\(https:\/\/github\.com\/lininn\/ds-bot-control\/releases\/latest\)/u, file)
     assert.match(top, /Windows 10\/11/u, file)
     assert.match(top, /not an official DeepSeek product/u, file)
     assert.match(top, /不是 DeepSeek 官方产品/u, file)

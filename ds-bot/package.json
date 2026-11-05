@@ -26,6 +26,9 @@
   },
   "type": "module",
   "main": "index.js",
+  "bin": {
+    "ds-bot": "./bin/ds-bot.js"
+  },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -34,6 +37,7 @@
   },
   "files": [
     "index.js",
+    "bin/",
     "src/host/",
     "src/shared/",
     "src/office/",
@@ -65,6 +69,9 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "dsBot": {
+    "verifiedDsh": "0.2.1-rc.5"
   },
   "devDependencies": {
     "@xmldom/xmldom": "0.9.12",

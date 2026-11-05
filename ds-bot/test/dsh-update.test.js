@@ -71,21 +71,22 @@ test('the newest released bot declares the verified DSH, offered to an older npm
 })
 
 test('a verified version older than the running one is still offered, for a broken release', async () => {
-  const { rt } = start({ current: '9.9.9', source: `${PKG.name}@^${PKG.version}`, answers: registryLatest({ verifiedDsh: '0.2.1-alpha.1' }) })
+  // Newer than the package's own floor, older than the running DSH.
+  const { rt } = start({ current: '9.9.9', source: `${PKG.name}@^${PKG.version}`, answers: registryLatest({ verifiedDsh: '0.2.2' }) })
   const view = await rt.dshUpdateCheck()
-  assert.equal(view.verified, '0.2.1-alpha.1')
+  assert.equal(view.verified, '0.2.2')
   assert.equal(view.available, true)
 })
 
-test('without any verified version nothing is offered', async () => {
+test('a registry that names no verified version falls back to the running package\'s own', async () => {
   const { rt } = start({ source: `${PKG.name}@^${PKG.version}` })
   const view = await rt.dshUpdateCheck()
-  assert.equal(view.verified, null)
-  assert.equal(view.available, false)
+  assert.equal(view.verified, PKG.dsBot.verifiedDsh)
+  assert.equal(view.available, true)
 })
 
 test('the running version matching the verified one offers nothing', async () => {
-  const { rt } = start({ source: `${PKG.name}@^${PKG.version}`, answers: registryLatest({ verifiedDsh: '0.1.0' }) })
+  const { rt } = start({ current: PKG.dsBot.verifiedDsh, source: `${PKG.name}@^${PKG.version}` })
   assert.equal((await rt.dshUpdateCheck()).available, false)
   assert.throws(() => rt.dshUpdateStart(), /No DSH update/)
 })
