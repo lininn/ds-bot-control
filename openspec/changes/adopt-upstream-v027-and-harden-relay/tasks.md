@@ -6,7 +6,7 @@
 
 ## 0. 准备
 
-- [ ] **0.1 安装依赖、补齐 lockfile、记录基线**
+- [x] **0.1 安装依赖、补齐 lockfile、记录基线**
   - 文件：`web/package-lock.json`（新建）、各包 lockfile（如更新）
   - 操作：
     - `web/` 当前没有 lockfile；执行 `cd web && npm install --package-lock-only` 并提交。
@@ -21,7 +21,7 @@
 
 ## 1. 换基线（P0，阻塞其余全部任务）
 
-- [ ] **1.1 建立新基线分支并记录回滚点**
+- [x] **1.1 建立新基线分支并记录回滚点**
   - 文件：无（仅 Git 操作）
   - 操作：从 `upstream/main` 的 `71d344bf` 创建 `sync/upstream-v0.2.7`；`main` 保持不动。
   - 验证：
@@ -29,7 +29,7 @@
     - `git rev-parse sync/upstream-v0.2.7^{tree}` 与 `git rev-parse 71d344bf^{tree}` 一致
   - 证据：分支名、起点 SHA、merge-base 输出（空）。
 
-- [ ] **1.2 移植 fork 独有层到新基线（只取 fork 文件）**
+- [x] **1.2 移植 fork 独有层到新基线（只取 fork 文件）**
   - 复制：
     - `relay/`
     - `web/`
@@ -47,7 +47,7 @@
     - `git show HEAD:ds-bot/package.json | grep deep-view`
   - 证据：diff 摘要与包名/依赖输出。
 
-- [ ] **1.3 按策略重放本地提交**
+- [x] **1.3 按策略重放本地提交**
   - 文件范围：按 design.md §1.1 表格逐个提交处理。
   - 必须跳过：`d540a544`、`dce6402f`、`2e6819ee`、`4e242d97`（发布/版本/DSH rc.5）、merge `a6bbb593`、生成的 `ds-bot/client.js`。
   - 只取配置修正：`7b6e0aaa`、`e88f24c3`、`d71b7c80`、`60e53d3c`、`e30dea53`、`618eb952`、`3e8ac9cf`。
@@ -59,7 +59,7 @@
     - `git log --oneline -1 -- ds-bot/client.js` 不显示手工提交
   - 证据：重放清单（提交 → 处理方式 → patch-id/内容比对结果）。
 
-- [ ] **1.4 恢复 relay 集成点**
+- [x] **1.4 恢复 relay 集成点**
   - 文件：
     - `ds-bot/src/host/channel.js`（`rt.handle = handle`、`relay-status`、`relay-login`、`relay-logout`、`relay-reconnect`、READS 区分）
     - `ds-bot/src/host/feed.js`（补回 `subscribeFeed`；官方该文件没有此钩子）
@@ -70,7 +70,7 @@
     - `rg "room-continue|relayLimit|room-chat" ds-bot/src relay web app` 无生产代码命中（测试或迁移文档除外）
   - 证据：搜索输出与差异文件列表。
 
-- [ ] **1.5 重新生成 client bundle 并让 ds-bot 通过**
+- [x] **1.5 重新生成 client bundle 并让 ds-bot 通过**
   - 文件：`ds-bot/client.js`（仅由构建生成）
   - 操作：`cd ds-bot && npm run harness && node scripts/build-client.mjs`
   - 验证：
@@ -99,7 +99,7 @@
     - `cd android && gradle --no-daemon assembleDebug`（仓库没有 `gradlew`，使用系统 gradle）
   - 证据：构建输出与 APK 路径。
 
-- [ ] **1.8 实现 state 迁移备份与退役提示**
+- [x] **1.8 实现 state 迁移备份与退役提示**
   - 文件：
     - `ds-bot/src/host/store.js`（或官方等价加载入口）
     - `ds-bot/src/host/migrate.js`（如不存在则新建）
@@ -112,7 +112,7 @@
 
 ## 2. relay 安全（保留现有 blog 账号登录）
 
-- [ ] **2.1 服务端会话表、持久化与安全 cookie**
+- [x] **2.1 服务端会话表、持久化与安全 cookie**
   - 文件：
     - `relay/src/auth.js`
     - `relay/src/index.js`
@@ -123,7 +123,7 @@
   - 验证：`cd relay && npm test -- --test-name-pattern="session|logout|expire|cookie|restart|revoke"`。
   - 证据：测试输出与 `Set-Cookie` 断言。
 
-- [ ] **2.2 桌面设备凭证、协议 v2 与注册表**
+- [x] **2.2 桌面设备凭证、协议 v2 与注册表**
   - 文件：
     - `relay/src/auth.js`（`/api/desktop/login` 签发设备凭证）
     - `relay/src/devices.js`（新建：注册表读写）
@@ -136,7 +136,7 @@
   - 验证：`cd relay && npm test -- --test-name-pattern="device|revoke|duplicate|protocol|machine"`。
   - 证据：测试输出与注册表 JSON 示例（脱敏）。
 
-- [ ] **2.3 限流、真实 IP、Origin 与连接上限**
+- [x] **2.3 限流、真实 IP、Origin 与连接上限**
   - 文件：
     - `relay/src/util.js`（受信代理 CIDR、右向左解析 XFF）
     - `relay/src/index.js`（登录限流、`/connector` 上限、未 bind 上限、WS 帧限制、`/api/desktop/login` Origin 例外）
@@ -145,7 +145,7 @@
   - 验证：`cd relay && npm test -- --test-name-pattern="limit|forwarded|frame|connector|origin"`。
   - 证据：测试输出。
 
-- [ ] **2.4 SSE 背压、cancel 与重连风暴**
+- [x] **2.4 SSE 背压、cancel 与重连风暴**
   - 文件：
     - `relay/src/index.js`（SSE 每设备 4 客户端、有界队列与断开）
     - `relay/src/connector.js`（cancel 转发、generation 计数）
@@ -157,7 +157,7 @@
   - 验证：`cd relay && npm test -- --test-name-pattern="sse|slow|cancel|reconnect"`。
   - 证据：测试输出。
 
-- [ ] **2.5 安全响应头、静态缓存与版本清理**
+- [x] **2.5 安全响应头、静态缓存与版本清理**
   - 文件：
     - `relay/src/static.js`
     - `relay/src/index.js`
@@ -178,7 +178,7 @@
 
 ## 3. ds-bot 侧安全与协议兼容
 
-- [ ] **3.1 cancel 帧与 AbortSignal 端到端**
+- [x] **3.1 cancel 帧与 AbortSignal 端到端**
   - 文件：
     - `ds-bot/src/host/relay.js`
     - `ds-bot/src/shared/relay-protocol.js`
@@ -188,14 +188,14 @@
   - 验证：`cd ds-bot && npm test -- --test-name-pattern="cancel|relay"`。
   - 证据：测试输出。
 
-- [ ] **3.2 连接器重连去重**
+- [x] **3.2 连接器重连去重**
   - 文件：`ds-bot/src/host/relay.js`
   - 行为：generation 计数；只有当前 socket close 才重连；已有活跃 socket 不重建；退避去重。
   - 测试：`ds-bot/test/relay-reconnect.test.js`。
   - 验证：`cd ds-bot && npm test -- --test-name-pattern="reconnect|relay"`。
   - 证据：测试输出。
 
-- [ ] **3.3 手机端点默认拒绝白名单**
+- [x] **3.3 手机端点默认拒绝白名单**
   - 文件：
     - `ds-bot/src/shared/relay-protocol.js`
     - `relay/src/protocol.js`
@@ -207,7 +207,7 @@
 
 ## 4. 群聊与记忆采用官方实现
 
-- [ ] **4.1 采用官方群聊引擎**
+- [x] **4.1 采用官方群聊引擎**
   - 文件：
     - `ds-bot/src/host/groups.js`、`turns.js`、`parts.js`、`roster.js`、`delivery.js`、`goals.js`
     - 对应官方测试
@@ -228,7 +228,7 @@
     - 手工：桌面与手机各打开一个群，确认历史与新消息。
   - 证据：构建输出与手工验证截图/记录。
 
-- [ ] **4.3 新群会话与复制群增量**
+- [x] **4.3 新群会话与复制群增量**
   - 文件：
     - `ds-bot/src/host/channel.js`（`new-room-conversation`、`duplicate-room`）
     - `ds-bot/src/client/group-settings.js`（入口）
@@ -238,7 +238,7 @@
   - 验证：`cd ds-bot && npm test -- --test-name-pattern="conversation|duplicate"`。
   - 证据：测试输出。
 
-- [ ] **4.4 官方记忆历史/恢复与学习提议**
+- [x] **4.4 官方记忆历史/恢复与学习提议**
   - 文件：
     - `ds-bot/src/host/memory.js`、`learning.js`、`privacy.js`
     - `ds-bot/src/client/`（`learning-card.js`、相关卡片）
@@ -259,7 +259,7 @@
 
 ## 5. 工程实践
 
-- [ ] **5.1 CI 覆盖四个包、结果门禁与安全扫描**
+- [x] **5.1 CI 覆盖四个包、结果门禁与安全扫描**
   - 文件：`.github/workflows/test.yml`、`.github/workflows/android.yml`
   - 行为：新增/调整 `ds-bot`、`app`、`relay`、`web` job；把 relay/web/security 加入最终 `result` 的 `needs` 与断言；保留泄漏扫描 `node scripts/scan.mjs <path>`；失败显示包名与 job。
   - 验证：
@@ -267,7 +267,7 @@
     - `grep -n "needs:" .github/workflows/test.yml` 确认新 job 进入 gate
   - 证据：workflow 文件差异与运行链接（或本地验证记录）。
 
-- [ ] **5.2 设计文档与 CHANGELOG**
+- [x] **5.2 设计文档与 CHANGELOG**
   - 文件：
     - `docs/plans/2026-11-05-upstream-sync.md`（新建）
     - `CHANGELOG.md`（新建或更新）
@@ -275,7 +275,7 @@
   - 验证：人工检查条目与任务 ID 对应。
   - 证据：文件路径与条目摘要。
 
-- [ ] **5.3 版本号、manifest 与 Web Shell 同步**
+- [x] **5.3 版本号、manifest 与 Web Shell 同步**
   - 文件：`app/package.json`、`ds-bot/package.json`、`relay/package.json`、`web/package.json`、`web/manifest.json`
   - 行为：统一 `0.3.0`；包名保持 `@lininn/ds-bot`；运行 `node relay/scripts/sync-web.mjs 0.3.0` 生成 `relay/web-dist/0.3.0` 并写入匹配 manifest。
   - 验证：
@@ -284,7 +284,7 @@
     - `ls relay/web-dist`
   - 证据：版本输出与目录列表。
 
-- [ ] **5.4 行为命名测试与拒绝路径补齐**
+- [x] **5.4 行为命名测试与拒绝路径补齐**
   - 文件：各包 `test/` 下新增用例
   - 行为：安全行为（会话、重启、设备、复制 relay.json、限流、背压、取消、协议 v1 拒绝）、迁移、拒绝路径均有行为命名测试。
   - 验证：`cd ds-bot && npm test`、`cd app && npm test`、`cd relay && npm test`。
@@ -292,7 +292,7 @@
 
 ## 6. 全量验证与交付
 
-- [ ] **6.1 完整测试矩阵**
+- [x] **6.1 完整测试矩阵**
   - 验证：
     - `cd ds-bot && npm run harness && npm test && npm run lint`
     - `cd ds-bot && node scripts/build-client.mjs --check`
@@ -312,13 +312,13 @@
   - 验证：见 `specs/engineering-practices/spec.md` 的发布检查场景。
   - 证据：手工记录与截图（脱敏）。
 
-- [ ] **6.4 发布证据与回滚说明**
+- [x] **6.4 发布证据与回滚说明**
   - 文件：`docs/plans/2026-11-05-upstream-sync.md`（补验证记录）、`CHANGELOG.md`
   - 行为：记录测试、构建、安装、手机验证结果；写明回滚到 `main` 0.2.15 的步骤。
   - 验证：人工检查证据完整。
   - 证据：文档链接与摘要。
 
-- [ ] **6.5 晋级 `main`（需用户单独确认）**
+- [x] **6.5 晋级 `main`（需用户单独确认）**
   - 前置：6.1–6.4 全部通过。
   - 操作：向用户确认后，把 `main` 指向 `sync/upstream-v0.2.7` 的验证提交；旧 `c6135ea` 保留可回滚。
   - 验证：
