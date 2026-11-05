@@ -13,11 +13,13 @@ const ownPrimitives = {
 }
 
 // The relay serves the build from a versioned subdirectory (/web-dist/<version>/), so asset
-// paths stay relative. React is deduped because the reused client modules live outside web/.
+// paths stay relative. React and deep-view are deduped because the reused client modules live
+// outside web/: they import these packages, but their own folders have no node_modules in a CI
+// checkout that installed only web/, so the copies installed here are the ones to resolve.
 export default defineConfig({
   base: './',
   plugins: [ownPrimitives],
-  resolve: { dedupe: ['react', 'react-dom', 'react-markdown', 'remark-gfm'] },
+  resolve: { dedupe: ['deep-view', 'react', 'react-dom', 'react-markdown', 'remark-gfm'] },
   // The reused sources are in ../app and ../ds-bot; the dev server must read them.
   server: { fs: { allow: ['..'] } },
   build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 2048 },
