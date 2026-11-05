@@ -18,14 +18,14 @@ function profile(user = [], { auto = true } = {}) {
     layers: [
       { packageName: '@deepseek-ai/dsh-base', packageDir: '', patchPaths: [], patches: [{ insert: [{ id: 'web', name: DSH_WEB, config: { searchProvider: 'deepseek-official', fetchProvider: 'http' } }] }] },
       { packageName: BUNDLE_PACKAGE, packageDir: '', patchPaths: [], patches: [
-        ...(auto ? [{ insert: [{ id: 'web-search-auto', name: 'ds-bot/web-search' }] }] : []),
+        ...(auto ? [{ insert: [{ id: 'web-search-auto', name: `${BUNDLE_PACKAGE}/web-search` }] }] : []),
         { id: 'web', config: { searchProvider: 'auto', fetchProvider: 'http' } },
       ] },
     ],
     patches: user,
   }
 }
-const disabledAuto = { id: 'web-search-auto', name: 'ds-bot/web-search', disabled: true }
+const disabledAuto = { id: 'web-search-auto', name: `${BUNDLE_PACKAGE}/web-search`, disabled: true }
 
 describe('searchSelectorPatch', () => {
   const made = []
