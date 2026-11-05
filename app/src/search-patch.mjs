@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path'
 import { rmSync, writeFileSync } from 'node:fs'
 import { composeEntries } from '@deepseek-ai/dsh-app-boot'
 import { stringify } from 'yaml'
+import { BUNDLE_PACKAGE } from './profile.mjs'
 
 export const SEARCH_PATCH_NAME = 'search-selector.patch.yml'
 
@@ -27,7 +28,7 @@ export function searchSelectorPatch(profile) {
   const web = entries.find(entry => entry.id === 'web')
   if (web?.config?.searchProvider !== 'auto') return undefined
   // The web row as it composes from the bundles alone, before ds-bot's selection.
-  const base = layers.filter(({ packageName }) => packageName !== 'ds-bot')
+  const base = layers.filter(({ packageName }) => packageName !== BUNDLE_PACKAGE)
   const original = composeEntries(base.map(layer => layer.patches)).find(entry => entry.id === 'web')
   if (original?.config?.searchProvider === undefined || original.config.searchProvider === 'auto') return undefined
   return [{ id: 'web', name: original.name, config: original.config }]

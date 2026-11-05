@@ -115,7 +115,7 @@ export function install(rt) {
   }
   // What a host that only reads the team may still answer.
   // Updates change the dsh profile, not the team, so a reading host may run them too.
-  const READS = new Set(['state', 'models', 'efforts', 'providers', 'provider-models', 'earlier', 'chat', 'run-stats', 'room-progress', 'exchange', 'exchange-text', 'file-text', 'usage', 'schedules', 'memory-view', 'browser-wait', 'browser-result', 'diagnostics', 'diagnostics-log', 'diagnostics-clear', 'update-check', 'update-install', 'dsh-update-install', 'repo-stars', 'approval-answer', 'thinking', 'avatar-library'])
+  const READS = new Set(['state', 'models', 'efforts', 'providers', 'provider-models', 'earlier', 'chat', 'run-stats', 'room-progress', 'exchange', 'exchange-text', 'file-text', 'usage', 'schedules', 'memory-view', 'browser-wait', 'browser-result', 'diagnostics', 'diagnostics-log', 'diagnostics-clear', 'update-check', 'update-install', 'dsh-update-install', 'repo-stars', 'approval-answer', 'thinking', 'avatar-library', 'relay-status', 'relay-reconnect'])
 
   async function setPrefs(body) {
     if (body.theme !== undefined) {
@@ -360,6 +360,16 @@ export function install(rt) {
           await rt.load()
           await rt.deleteRoom(body.id)
           return ok(view())
+        case 'new-room-conversation': {
+          await rt.load()
+          const room = await rt.newRoomConversation(body.id)
+          return ok({ room: view().rooms.find(entry => entry.id === room.id) })
+        }
+        case 'duplicate-room': {
+          await rt.load()
+          const room = await rt.duplicateRoom(body.id)
+          return ok({ room: view().rooms.find(entry => entry.id === room.id) })
+        }
         case 'approval-answer':
           rt.answerApproval(body.id, body.choice)
           return ok(true)
@@ -613,6 +623,19 @@ export function install(rt) {
         case 'diagnostics-clear':
           await rt.diagnostics.clear()
           return ok(true)
+        case 'relay-status':
+          if (rt.relay === undefined) return fail('Remote control is not available', 'bot/refused')
+          return ok(rt.relay.status())
+        case 'relay-login':
+          if (rt.relay === undefined) return fail('Remote control is not available', 'bot/refused')
+          return ok(await rt.relay.login({ username: body.username, password: body.password, url: body.url }))
+        case 'relay-logout':
+          if (rt.relay === undefined) return fail('Remote control is not available', 'bot/refused')
+          return ok(rt.relay.logout())
+        // A manual retry after the relay said another host owns this device id.
+        case 'relay-reconnect':
+          if (rt.relay === undefined) return fail('Remote control is not available', 'bot/refused')
+          return ok(rt.relay.reconnect())
         default:
           return fail(`Unknown endpoint ${endpoint}`, 'bot/not-found')
       }
@@ -623,6 +646,10 @@ export function install(rt) {
       return fail(message, code)
     }
   }
+
+  // The same dispatcher the HTTP route uses, for callers inside this process (the relay
+  // connector): a phone's request arrives over the relay and is answered without a DSH cookie.
+  rt.handle = handle
 
   // An exact Fetch route on the shared /api channel; the browser authenticates with its session cookie.
   ctx.effect(() => ctx.connection.fetch.register({

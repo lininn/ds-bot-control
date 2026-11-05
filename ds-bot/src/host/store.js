@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { LEGACY_THEMES, MAX_EXCHANGES, ROOM_MODES, TEXT_KEPT } from './constants.js'
 import { replaceFile } from './files.js'
 import { homeLock } from './home-lock.js'
+import { backupBeforeMigration, logRetiredSettings } from './migrate.js'
 import { currentColor, headOf, normalize, unquote } from './text.js'
 
 // A table read that sees only the keys the table holds itself. Ids that come from
@@ -117,6 +118,7 @@ export function install(rt) {
     // Teams saved before the DSH Agent existed carry no `agents`; corrupt values reset.
     if (state.agents === null || typeof state.agents !== 'object' || Array.isArray(state.agents)) state.agents = {}
     let migrated = !hadCapabilities
+    const retired = []
     if (state.capabilities === null || typeof state.capabilities !== 'object' || Array.isArray(state.capabilities)) {
       state.capabilities = { items: {} }
       migrated = true
@@ -186,6 +188,9 @@ export function install(rt) {
     // followed it went too. Calls it parked stay until the group's next round runs them.
     for (const room of Object.values(state.rooms)) {
       if (['lateRounds', 'quietNoticed', 'quietShown', 'relays', 'relayLimit'].every(key => room[key] === undefined)) continue
+      for (const key of ['relays', 'relayLimit']) {
+        if (room[key] !== undefined) retired.push({ roomId: room.id, key, value: room[key] })
+      }
       delete room.lateRounds
       delete room.quietNoticed
       delete room.quietShown
@@ -232,15 +237,21 @@ export function install(rt) {
     const stale = Object.values(state.rooms).filter(room => !room.named && room.name !== rt.autoRoomName(room.members))
     for (const room of stale) room.name = rt.autoRoomName(room.members)
     indexSessions()
-    return { migrated: migrated || stale.length > 0, stale }
+    return { migrated: migrated || stale.length > 0, stale, retired }
   }
 
   const load = () => loaded ??= (async () => {
     claimLock()
     if (holder !== undefined) warn('ds-bot: %s', readOnly())
-    const { migrated, stale } = adopt(readFileState())
+    const saved = readFileState()
+    // Before adoption, and before its first write: the old team is the way back.
+    if (holder === undefined && stuck === undefined && saved !== undefined) backupBeforeMigration(statePath)
+    const { migrated, stale, retired } = adopt(saved)
     if (holder !== undefined) return
     if (migrated && stuck === undefined) {
+      // The old settings are recorded before the first write; if the log cannot be
+      // written, the load fails with state.json still as it was.
+      await logRetiredSettings(home, retired)
       // A failed write must not poison `loaded`: the migrated state stays in
       // memory and the next save() writes it.
       try {

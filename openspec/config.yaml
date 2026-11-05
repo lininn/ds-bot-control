@@ -1,0 +1,80 @@
+schema: spec-driven
+language:
+  artifacts: zh-CN
+  detection: inferred
+  appliesTo:
+    - proposal
+    - tasks
+    - plan-ready
+    - workflow-status
+    - human-facing summaries
+
+context: |
+  Purpose:
+    DS-Bot fork（lininn/ds-bot-control）：在 DeepSeek Harness 上运行长期 Bot 团队，
+    并提供手机远程控制。上游为 Fei2411/DS-Bot（社区项目，不是 DeepSeek 官方产品）。
+
+  Tech Stack:
+    - Node.js ESM；CI 使用 Node 22 与 24；各包独立 package-lock。
+    - ds-bot/：DSH 插件（host + client bundle），纯 JS，不使用 TypeScript。
+    - app/：Electron 44 + Vite 8 + electron-builder。
+    - relay/：node:http + ws，账号登录与桌面出站 connector。
+    - web/：Vite 8 + React 19 手机 Web 壳，复用 ds-bot/src/client 与 app/ui。
+    - android/：Gradle WebView 外壳。
+    - 当前基线固定 DSH 0.2.1-rc.5；官方 dev 分支使用 0.2.2-rc.1，本轮不默认升级。
+
+  Architecture:
+    - 本地 main 与 upstream/main 没有共同祖先；基线为官方 v0.2.3（4a7b5506）加初始导入。
+    - 上游 main 为 71d344bf（v0.2.7）；本地 tag 不代表上游版本，引用上游一律用 SHA。
+    - 同步策略：以官方 tag 为新基线、重放本地提交；禁止 merge 无共同祖先的历史，
+      禁止合并官方 dev/develop。
+    - fork 独有层：relay/、web/、android/、ds-bot/src/host/relay.js、
+      ds-bot/src/shared/relay-protocol.js、macOS 安装器与 Host 心跳。
+
+  Code Style:
+    - ESM、2 空格、单引号、无分号（与现有 ds-bot/relay 代码一致）。
+    - 注释解释“为什么”，不复述代码。
+    - 不手工编辑生成物（如 ds-bot/client.js）；改源码后运行构建。
+    - 新文件沿用同目录既有命名与结构。
+
+  Testing:
+    - ds-bot：npm test；npm run lint；node scripts/build-client.mjs --check。
+    - app：npm test（node --test test/*.test.mjs）。
+    - relay：npm test。
+    - web：npm run build。
+    - 仓库级：node scripts/scan.mjs（泄漏扫描）；CI 见 .github/workflows/test.yml。
+
+  Constraints:
+    - 安全改造必须保留现有账号登录方式（blog /api/relay/auth），
+      不引入二维码/密钥配对作为唯一登录。
+    - 手机会话不得包含账号级 access token；relay 不得把账号凭证下发给手机。
+    - 保持 state 版本 1 兼容；破坏性迁移必须提供回滚说明。
+    - 不新增不必要的依赖；新增依赖需说明理由并更新对应 lockfile。
+    - pnpm 全局版本保持 7.4.0，不升级。
+    - 不提交密钥、token、cookie；配置通过环境变量。
+    - 不提交 node_modules、dist、build 等生成物。
+    - 版本号不得与上游语义冲突；本变更发布使用 0.3.0（2026-11-05 决策），
+      npm 包名保持 @lininn/ds-bot，四包版本与 web/manifest.json、relay/web-dist 保持一致。
+
+rules:
+  specs:
+    - 每个能力至少覆盖正常路径、拒绝路径、兼容/迁移三类场景。
+    - 安全需求必须写明信任边界、凭证生命周期和失败时的行为。
+    - 引用上游实现时写明 SHA 与文件路径，不写“官方最新”。
+  design:
+    - 优先整体采用上游模块，不做半新半旧的局部拼接。
+    - 涉及 relay/web/android 的改动必须说明与账号登录、版本握手、静态壳分发的兼容性。
+    - 列出不可逆决策与回滚点。
+  tasks:
+    - 任务按可独立验证的垂直切片拆分，单任务尽量不超过 1-2 天。
+    - 每个任务写明文件范围、验证命令和完成证据。
+    - 先做 relay/ 独立安全修复；ds-bot 侧安全与功能改动在换基线后落地，
+      避免在旧基线上重复移植。整体顺序：换基线 → 安全 → 群聊/记忆 → 工程实践。
+  implementation:
+    - 不修改本变更之外的模块；不顺手重构。
+    - 先读现有实现再改；保持现有测试通过，新增行为补测试。
+    - 危险操作（删除、覆盖、git 历史变更）先确认。
+    - 完成后必须运行对应包的测试、lint/build，并如实报告未执行项。
+  artifacts:
+    - Follow language.artifacts for human-facing OpenFlow outputs.
+    - Parser-required OpenSpec headings, CLI commands, code identifiers, and protocol keywords must remain in their required original form.

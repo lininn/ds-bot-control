@@ -85,6 +85,14 @@ export function teamActions({ call, after, partFor, roster, ui, live, cards, hel
     clearQuote: token => ui.set(state => (state.quote?.token === token ? { ...state, quote: null } : state)),
     setFlags: (id, flags) => after(call('set-flags', { id, ...flags })),
     deleteRoom: id => after(call('delete-room', { id })),
+    newRoomConversation: id => after(call('new-room-conversation', { id })),
+    duplicateRoom: id => after(call('duplicate-room', { id })),
+    // Remote control: the settings page reads the binding and signs in or out. These do not
+    // call `after`: nothing in the team changes, and the page refreshes its own status.
+    relayStatus: () => call('relay-status'),
+    relayLogin: payload => call('relay-login', payload),
+    relayLogout: () => call('relay-logout'),
+    relayReconnect: () => call('relay-reconnect'),
     openMenu: (menu) => { ui.set(state => ({ ...state, menu })) },
     closeMenu: () => { ui.set(state => (state.menu ? { ...state, menu: null } : state)) },
     closeOverlay: () => { ui.set(state => ({ ...state, newChat: null, exchange: null, details: state.newChat || state.exchange ? state.details : null })) },

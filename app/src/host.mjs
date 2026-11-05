@@ -3,6 +3,7 @@
 // on a loopback port and reports the launch URL over IPC. With DS_BOT_CHECK, the path of a JSON list
 // of Session ids, it boots the first-run check's profile instead and reports which of them it cannot read.
 // Follows DeepSeek Harness apps/desktop-host/src/index.ts (MIT); see NOTICE.
+import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { inspect } from 'node:util'
 import { loadLayeredEnv, reportSkippedBundles } from '@deepseek-ai/dsh-app-boot'
@@ -15,6 +16,28 @@ import { reconcileSearchSelector } from './search-patch.mjs'
 import { unreadableSessions } from './session-check.mjs'
 
 const MAX_FATAL_DIAGNOSTIC_CHARS = 64 * 1024
+const HEARTBEAT_MS = 5_000
+
+// The shell knows the Host is alive by these; a Host that stops sending them is stuck.
+function announce() {
+  if (!process.connected) return
+  const timer = setInterval(() => {
+    if (!process.connected) { clearInterval(timer); return }
+    process.send({ type: 'heartbeat' }, () => {})
+  }, HEARTBEAT_MS)
+  timer.unref()
+}
+
+// A stuck event loop never hears its IPC channel close. A watcher outside this process ends
+// the Host when the shell that owns it is gone, so that it cannot run on as an orphan.
+function watchShell() {
+  if (process.platform === 'win32' || process.env.DS_BOT_APP !== '1') return
+  const shellPid = process.ppid
+  if (!Number.isInteger(shellPid) || shellPid <= 1) return
+  const [parent, self] = [String(shellPid), String(process.pid)]
+  const script = `while kill -0 ${parent} 2>/dev/null && kill -0 ${self} 2>/dev/null; do sleep 5; done; if ! kill -0 ${parent} 2>/dev/null; then kill -9 ${self} 2>/dev/null; fi`
+  spawn('/bin/sh', ['-c', script], { detached: true, stdio: 'ignore' }).unref()
+}
 
 const send = (message) => new Promise((resolve, reject) => {
   if (!process.connected || process.send === undefined) { resolve(); return }
@@ -22,6 +45,8 @@ const send = (message) => new Promise((resolve, reject) => {
 })
 
 async function main() {
+  announce()
+  watchShell()
   const pnpm = process.argv[2]
   const check = process.env.DS_BOT_CHECK || undefined
   const profile = check === undefined ? loadAppProfile() : loadCheckProfile()

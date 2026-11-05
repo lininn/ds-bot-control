@@ -4,6 +4,38 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-05
+
+This fork release is rebased on upstream DS Bot `71d344bf` (v0.2.7) and keeps the
+account-based remote control layer.
+
+### Added
+
+- Settings → Remote control signs this computer in with the existing blog account, shows the connector state, and reconnects without restarting the app. (1.8)
+- A group can start a new conversation without losing its name, members, settings or memory; Duplicate group copies members and settings without copying the conversation or memory. (4.3)
+- The first launch on the new baseline keeps a `state.json.bak-<timestamp>` copy and records retired `relays`/`relayLimit` settings in `state-migration.log`. (1.8)
+- The phone's group view and memory/learning entry points use the same host endpoints as the desktop window. (4.2, 4.5)
+
+### Changed
+
+- The fork is rebuilt from upstream SHA `71d344bf` (v0.2.7) instead of carrying the old shared history; `main` stays at the previous release until an explicit promotion. (1.1–1.5)
+- Group turns, goals, memory history/restore and learning proposals follow the official v0.2.7 implementations. (4.1, 4.4)
+- `app`, `ds-bot`, `relay` and `web` share version `0.3.0`; the phone shell is published under the matching `web-dist/0.3.0` directory. (5.3)
+
+### Security
+
+- The phone receives a random server-side session ID, never the blog access token; only its SHA-256 hash is stored, with a seven-day lifetime and a 24-hour idle timeout. (2.1)
+- Desktop connectors use a relay-issued, one-time device credential bound to the runtime machine ID and protocol v2; a copied `relay.json`, a duplicate device and a v1 connector are rejected. (2.2, 3.2)
+- Login failures, connector count, unbound sockets, WebSocket frames and HTTP bodies are bounded; forwarded client addresses are read from a trusted proxy only. (2.3)
+- Live feeds have per-device limits, bounded queues and a byte budget; a phone cancel aborts the matching desktop request, and an old socket close cannot start a second connector. (2.4, 3.1)
+- Phone-facing endpoints are a default-deny allowlist; secrets, provider keys, relay controls, diagnostics and installers are not reachable from the phone. (3.3)
+- The relay serves CSP and related security headers, immutable hashed assets, and no-store entry pages; Android release builds refuse cleartext and old web shells are pruned. (2.5, 2.6)
+
+### Migration
+
+- Existing phone sessions and desktop device credentials are intentionally invalidated once. Sign in again on the computer under Settings → Remote control, then pair the phone again. (1.8, 2.1, 2.2)
+- Memory, Bots, groups and model settings survive the state migration; unknown top-level fields are preserved. Restore the generated backup to return to the previous release while its process is stopped. (1.8)
+
 ## [0.2.7] - 2026-11-03
 
 ### Added

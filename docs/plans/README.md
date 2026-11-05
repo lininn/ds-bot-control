@@ -60,3 +60,4 @@
 | [启动页文案](2026-10-29-start-copy.md) | 启动页和壳里系统对话框的字：按页面位置分层，每层一条写法规则；`text.mjs` 一张表、旧键到新键的对照、扫全表的测试 |
 | [手机 App](2026-10-24-mobile-app.md) | iOS 和 Android 远程操控电脑上的 Bot 团队：手机不跑 Agent；扫码配对、端到端加密、电脑只往外连；完整功能，高权限操作要解锁手机 |
 | [Office 文档](2026-10-27-office-documents.md) | Bot 离线处理 .docx/.pptx/.xlsx：应用带的 payload、`office.js` 命令行、office 路由换成带 `office-tools` 的版本 |
+| [官方 v0.2.7 重建与 relay 安全](2026-11-05-upstream-sync.md) | 从上游 SHA `71d344bf` 重建分支；账号登录不变；设备凭证、会话、限流、SSE、默认拒绝白名单、群聊/记忆采用官方实现、state 迁移与 0.3.0 回滚步骤 |

@@ -21,7 +21,8 @@ await installHooks()
 const saved = () => JSON.parse(readFileSync(join(paths.userData, 'locations.json'), 'utf8'))
 
 test('a later start with room to spare shows no place line; Settings still moves the data', async () => {
-  const { home } = await startApp({ saved: { freeAtStart: 1 } })
+  // No updater: its own card would be a second question on the same page.
+  const { home } = await startApp({ packaged: false, saved: { freeAtStart: 1 } })
   await waitFor(() => startWindows().length === 1, 'open the start window')
   const start = startWindows()[0]
   await waitFor(() => window() !== undefined, 'build the team window')

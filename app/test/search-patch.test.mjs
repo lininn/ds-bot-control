@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, describe, test } from 'node:test'
 import { reconcileSearchSelector, SEARCH_PATCH_NAME, searchSelectorPatch } from '../src/search-patch.mjs'
+import { BUNDLE_PACKAGE } from '../src/profile.mjs'
 
 const DSH_WEB = '@deepseek-ai/dsh-web'
 
@@ -16,7 +17,7 @@ function profile(user = [], { auto = true } = {}) {
     name: 'ds-bot', dir, patchPath: join(dir, 'cordis.patch.yml'), skippedBundles: [],
     layers: [
       { packageName: '@deepseek-ai/dsh-base', packageDir: '', patchPaths: [], patches: [{ insert: [{ id: 'web', name: DSH_WEB, config: { searchProvider: 'deepseek-official', fetchProvider: 'http' } }] }] },
-      { packageName: 'ds-bot', packageDir: '', patchPaths: [], patches: [
+      { packageName: BUNDLE_PACKAGE, packageDir: '', patchPaths: [], patches: [
         ...(auto ? [{ insert: [{ id: 'web-search-auto', name: 'ds-bot/web-search' }] }] : []),
         { id: 'web', config: { searchProvider: 'auto', fetchProvider: 'http' } },
       ] },

@@ -65,6 +65,7 @@ export class HostProcess {
       })
       child.on('message', (message) => {
         for (const listener of this.#messageListeners) listener(message)
+        if (message?.type === 'heartbeat') return
         if (message?.type === 'ready') resolve({ url: message.url, injections: message.injections })
         else if (message?.type === 'checked') resolve({ unreadable: message.unreadable })
         else if (message?.type === 'fatal') this.#fail(new Error(withLogTail(message.message, this.#stderr)), reject)
