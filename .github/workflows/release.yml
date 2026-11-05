@@ -107,8 +107,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          npm pack
-          gh release upload "$TAG" "ds-bot-$(node -p "require('./package.json').version").tgz" --clobber
+          # A scoped package packs as <scope>-<name>-<version>.tgz; take the file npm names.
+          file="$(npm pack --silent)"
+          gh release upload "$TAG" "$file" --clobber
 
   app-windows:
     name: Desktop app installer (Windows)
