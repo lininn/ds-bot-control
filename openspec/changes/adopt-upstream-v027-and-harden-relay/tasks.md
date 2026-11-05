@@ -79,7 +79,7 @@
     - `cd ds-bot && node scripts/build-client.mjs --check`
   - 证据：三条命令的通过输出。
 
-- [ ] **1.6 适配桌面 app 启动架构**
+- [x] **1.6 适配桌面 app 启动架构**
   - 文件：
     - `app/src/main.mjs`、`app/src/shell.mjs`、`app/src/window-frame.mjs`（对齐官方 start-window/whale 架构）
     - `app/src/install-app.mjs`、`app/src/first-run.mjs`、`app/src/host-process.mjs`（保留 macOS 安装器与心跳）
@@ -89,7 +89,7 @@
     - `cd app && npm run dist`（至少完成打包，不要求签名）
   - 证据：测试输出与产物路径。
 
-- [ ] **1.7 适配 Web Shell 与 Android**
+- [x] **1.7 适配 Web Shell 与 Android**
   - 文件：
     - `web/`（官方 client 导出、`deep-view`、版本握手）
     - `web/index.html`（首帧与下拉刷新保留）
@@ -168,7 +168,7 @@
   - 验证：`cd relay && npm test -- --test-name-pattern="header|cache|static|gzip|prune"`。
   - 证据：测试输出与响应头断言。
 
-- [ ] **2.6 Android 明文与 WebView 安全**
+- [x] **2.6 Android 明文与 WebView 安全**
   - 文件：
     - `android/app/src/main/AndroidManifest.xml`（release `usesCleartextTraffic=false`）
     - `android/app/src/debug/AndroidManifest.xml`（新建，允许本地明文）

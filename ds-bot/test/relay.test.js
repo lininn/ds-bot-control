@@ -242,7 +242,7 @@ function relayHarness({ config = {}, fetchImpl, env = {}, defaultUrl, machineId 
     defaultUrl,
     fetchImpl: fetchImpl ?? (async () => ({
       ok: true,
-      json: async () => ({ status: true, accessToken: 'tok-xyz', user: { username: 'alice' } }),
+      json: async () => ({ status: true, deviceToken: 'tok-xyz', user: { username: 'alice' } }),
     })),
   })
   return {

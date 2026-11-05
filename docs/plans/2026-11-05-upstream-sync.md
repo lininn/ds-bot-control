@@ -77,16 +77,34 @@
 
 | 命令 | 结果 |
 |---|---|
-| `cd ds-bot && npm test` | 1637 tests，1635 pass，2 skipped，0 fail |
-| `cd ds-bot && npm run lint` | 通过（exit 0），40 warning，0 error |
+| `cd ds-bot && node --import ./test/harness-resolve.mjs --test "test/*.test.js"` | 1675 tests，1673 pass，2 skipped，0 fail |
+| `cd ds-bot && node scripts/lint.mjs` | 通过（exit 0），40 warning，0 error |
 | `cd ds-bot && node scripts/build-client.mjs --check` | 通过（exit 0） |
-| `cd app && npm test` | 425 tests，422 pass，3 skipped，0 fail |
-| `cd relay && npm test` | 42 tests，42 pass |
-| `cd web && npm run build` | 通过，359 modules transformed |
-| `cd mobile && npm run typecheck` | 通过（exit 0） |
-| `node scripts/scan.mjs <clean tree>` | `must fix: 0`；`can stay: 433` |
+| `cd app && node --test "test/*.test.mjs"` | 436 tests，433 pass，3 skipped，0 fail |
+| `node scripts/scan.mjs <git archive HEAD>` | `must fix: 0`；`can stay: 433` |
 | workflow YAML 解析 | `test.yml`、`android.yml`、`release.yml` 均可被 `YAML.load_file` 解析 |
 | 版本一致性 | `app`/`ds-bot`/`relay`/`web` 与 `web/manifest.json` 均为 `0.3.0` |
+
+同一天的 GitHub Actions（提交 `c7321766` 起）：
+
+| workflow / job | 结果 |
+|---|---|
+| Test · Desktop app profile | 通过（含 `app/test/release-notes.test.mjs`） |
+| Test · Leak scan | 通过 |
+| Test · Relay | 通过 |
+| Test · Web shell | 通过（本机缺少 `web/node_modules`，以 CI 结果为准） |
+| Test · Mobile app typecheck | 通过 |
+| Test · ubuntu Node 22/24 与 windows Node 24（DSH rc.2/rc.5） | 通过 |
+| Test · Desktop app package（macOS arm64/x64、Windows、Linux x64） | 通过：打包后启动页面，等待团队视图、模型卡片、问候、输入框与回复 |
+| Android · Build APK | 通过：`assembleRelease`、release manifest 拒绝明文、上传 `DS-Bot-android` |
+
+自测中发现并修正（本会话）：
+
+- `client.js` 的注册 id 写死为 `ds-bot`，而包名是 `@lininn/ds-bot`；DSH 按包名查找，导致打包应用的团队视图不调用 `ready()`、桌面安装检查超时。改为从 `package.json` 读取包名，并让 bundle 测试断言该 id。
+- 换基线时丢失的 fork 内容全部恢复：`ds-bot` CLI（`bin/`、`cli.test.js`、`package.json` 的 `bin` 与 `dsBot.verifiedDsh`）、根 README 与插件 README 的快速开始/命令行/远程控制/中文段落、架构图、桌面安装测试、relay 连接器与控制器测试。
+- `app/test/release-notes.test.mjs` 仍按旧 tarball 名 `ds-bot-*.tgz` 断言，改为 `lininn-ds-bot-*.tgz` 和 fork 的 release 链接。
+- `state-migration` 的清理钩子先删目录再停插件，CI 上出现 `ENOTEMPTY`；改为先 `await ctx.dispose()`，再恢复权限并删除。
+- Android CI：SDK 仓库已移除 `tools` 包，且 `yes | sdkmanager` 在 `pipefail` 下因 broken pipe 失败；改为只请求 `platform-tools`，并直接安装 platform 34（licenses 由 setup-android 接受）。
 
 本机 relay 实进程冒烟（`BLOG_API_URL` 指向不可达地址，`COOKIE_SECURE=0`，临时 `DSBOT_RELAY_DATA`）：
 
@@ -97,17 +115,23 @@
 - relay 与 ds-bot 的允许列表各 49 项且完全一致，`RELAY_PROTOCOL` 两侧均为 `2`。
 - `web/dist` 与 `relay/web-dist/0.3.0` 内容一致（仅多出 `manifest.json`）。
 
-自测中发现并修正：
+换基线阶段发现并修正：
 
 - 换基线时丢失的 `scripts/scan.mjs` 中 `PKG_NAME`，恢复为 `@lininn/ds-bot`，避免泄漏扫描误判包名。
 - Android 构件名仍用旧产品名，统一改为 `DS-Bot-android`（workflow 与 README）。
 - 将本地数据与生成物加入 `.gitignore`：`/web/dist/`、`/relay/web-dist/`、`/relay/data/`、`/app/.dshtest/`。
 
-未能执行（环境限制，不计为通过）：
+本机未能执行、改由 CI 覆盖（不把本机未跑写成通过）：
 
-- `cd app && npm run dist`：`beforePack` 下载 Office 运行时（GitHub Release 上的 Python 独立构建）两次都超时，未产出安装包。CI 的 `app-package*` job 会在 runner 上执行同一构建。
-- `cd android && gradle assembleRelease`：本机没有 `gradle` 与 `ANDROID_HOME`（仅有 `sdkmanager`）。
-- Docker 启动与迁移、桌面安装/升级/卸载、真机手机验证：本机没有 docker 与手机设备。
+- `cd app && npm run dist`：本机 `beforePack` 下载 Office 运行时（GitHub Release 上的 Python 独立构建）两次都超时。CI 的四个 `Desktop app package` job 在 runner 上完成打包、启动检查；Windows 还走安装、升级与卸载，Linux 走 deb/AppImage 安装与更新。
+- `cd android && gradle assembleRelease`：本机没有 `gradle` 与 `ANDROID_HOME`。CI Android workflow 完成 release APK、明文拒绝检查并上传 `DS-Bot-android`。
+- `cd web && npm run build`：本机 `web/node_modules` 缺失；CI Web shell job 完成构建。
+- Docker 启动与数据归属迁移：本机没有 docker；CI 的 `Docker startup and data migration` job 通过。
+
+仍未执行（无设备/环境，不计为通过）：
+
+- 真机手机登录、发消息、群聊、记忆与审批的手工验证。自动化覆盖白名单两端一致、请求转发测试与共享客户端构建，但没有真实手机。
+- 用真实宿主 `state.json` 副本做一次启动演练。`state-migration` 测试覆盖备份、保留未知字段与退役设置日志，Docker job 覆盖数据归属迁移，二者都不是这一演练本身。
 
 ## 变更
 
