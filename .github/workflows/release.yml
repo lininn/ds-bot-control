@@ -92,7 +92,9 @@ jobs:
         run: npm pack --dry-run
 
       - name: Publish
-        if: github.event_name == 'release' || (!inputs.dry_run && github.ref == 'refs/heads/main')
+        # This fork ships the desktop app through the release; npm Trusted Publishing is set up
+        # on the upstream repository, so only upstream publishes the package.
+        if: (github.event_name == 'release' || (!inputs.dry_run && github.ref == 'refs/heads/main')) && github.repository == 'Fei2411/DS-Bot'
         run: |
           tag="$(node -p "require('./package.json').version.includes('-') ? 'next' : 'latest'")"
           echo "Publishing $(node -p "require('./package.json').version") with the npm tag $tag"
