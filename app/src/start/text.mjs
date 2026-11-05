@@ -152,6 +152,8 @@ export const TEXT = {
     'dialog.pickCookies': '选择 cookie 文件',
     'dialog.saveAs': '保存下载的文件',
     'dialog.saveLog': '保存日志',
+    'dialog.installBusy': '「应用程序」里已经有一个正在运行的 DS Bot（{target}）。请先退出它，再打开这一份。',
+    'dialog.installFailed': '没能把 DS Bot 安装到「应用程序」：{message}\n\n应用没有变化。你可以自己把它拖进「应用程序」，或者就在下载的位置打开它。',
     // The app's own picker (preload.cjs showPicker): labels, then what went wrong, in place.
     'picker.places': '位置',
     'picker.drives': '磁盘',
@@ -334,6 +336,8 @@ export const TEXT = {
     'dialog.pickCookies': 'Choose a cookie file',
     'dialog.saveAs': 'Save the download',
     'dialog.saveLog': 'Save the log',
+    'dialog.installBusy': 'A running DS Bot is already installed at {target}. Quit it, then open this copy again.',
+    'dialog.installFailed': 'DS Bot could not be installed in your Applications folder: {message}\n\nThe app was not changed. Move it to Applications yourself, or open it from where it is.',
     'picker.places': 'Places',
     'picker.drives': 'Drives',
     'picker.home': 'Home',

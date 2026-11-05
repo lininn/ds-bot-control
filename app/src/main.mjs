@@ -15,13 +15,14 @@ import { fileURLToPath } from 'node:url'
 import { canonicalExecPath } from './canonical-path.mjs'
 import { configureIdentity } from './legacy.mjs'
 import { hostPort } from './host-port.mjs'
+import { installBundle, installDecision, installPlan, openBundle } from './install-app.mjs'
 import { captureStdio, LogFile } from './logs.mjs'
 import { Pickers } from './picker-host.mjs'
 import { currentRootOf, driveOf, formatBytes, freeSpace, isEmptyTree, pickFrom, placeOf, rootOf, runningLow } from './place.mjs'
 import { createShell, SHELL_TEXT } from './shell.mjs'
 import { readStartFrame, writeStartFrame } from './start-frame.mjs'
 import { explainOf, StartWindow } from './start-window.mjs'
-import { langOf } from './start/text.mjs'
+import { langOf, t } from './start/text.mjs'
 import { createDeferredPrompt } from './update-prompt.mjs'
 import { CAPTION_HEIGHT, cssColor, micaAvailable, nativeThemeSource } from './window-frame.mjs'
 
@@ -168,11 +169,14 @@ const shell = createShell({
 // The tray icon goes away with the app, and a late answer to the close notice hides nothing.
 app.once('will-quit', () => { shell.dispose(); botViews?.dispose(); updates?.stop() })
 
+// A macOS app opened from its download installs itself before it starts; see install-app.mjs.
+const pendingInstall = installPlan({ isPackaged: app.isPackaged, execPath: process.execPath })
+
 // A packaged app started through an 8.3 short path or a junction restarts once on the
 // canonical path: the lock below and every path the Host sees then agree with the long
 // form, and the profile patch layer stops mixing the two.
 const canonical = app.isPackaged ? canonicalExecPath(process.execPath) : undefined
-if (canonical !== undefined) {
+if (canonical !== undefined && pendingInstall === undefined) {
   app.relaunch({ execPath: canonical, args: process.argv.slice(1) })
   app.exit(0)
 } else if (!app.requestSingleInstanceLock()) {
@@ -191,7 +195,7 @@ if (canonical !== undefined) {
     // On Windows the locale is known only once the app is ready.
     lang: () => langOf(app.getLocale()), motion: readStartFrame(frameFile).motion,
     version: app.getVersion(), program: [dirname(process.execPath), process.resourcesPath, app.getAppPath()], log: logs, mainWindow: () => mainWindow,
-    onRetry: () => { retry().catch(fail) },
+    onRetry: () => { (pendingInstall !== undefined ? installAndRelaunch(pendingInstall) : retry()).catch(fail) },
     onReload: () => { mainWindow?.webContents.reload() },
     // Closing the start window before the hand-off quits: there is no team window yet to stay in
     // the tray with.
@@ -237,13 +241,38 @@ if (canonical !== undefined) {
     if (stopping) { void (hostStop ?? Promise.resolve()).then(() => { app.quit() }); return }
     void stopHost().then(() => { app.quit() })
   })
-  app.whenReady().then(async () => { shell.install(); await start() }).catch(fail)
+  app.whenReady().then(async () => {
+    shell.install()
+    // A macOS app opened from its download installs itself and hands over to the installed copy.
+    if (pendingInstall !== undefined) { await installAndRelaunch(pendingInstall); return }
+    await start()
+  }).catch(fail)
 }
 
 function stopHost() {
   stopping = true
   hostStop ??= (host?.stop() ?? Promise.resolve()).catch((error) => { console.error(error) }).finally(() => { stopped = true })
   return hostStop
+}
+
+// The first start of a downloaded copy: copy it into Applications and open that copy. This
+// process ends; the window afterwards belongs to the installed app. A copy that cannot be
+// installed says so on the start window's failure page, like any other failed start.
+async function installAndRelaunch(plan) {
+  const say = (key, vars) => t(langOf(app.getLocale()), key, vars)
+  try {
+    const decision = await installDecision(plan, { version: app.getVersion() })
+    if (decision.action === 'busy') {
+      startWindow.fail(new Error(say('dialog.installBusy', { target: decision.target })))
+      return
+    }
+    const target = decision.action === 'open' ? decision.target : await installBundle(decision)
+    await openBundle(target)
+    app.exit(0)
+  } catch (error) {
+    console.error(error)
+    startWindow.fail(new Error(say('dialog.installFailed', { message: error instanceof Error ? error.message : String(error) })))
+  }
 }
 
 // A throwaway run (DS_BOT_HOME) asks nothing and shows what a later start shows.
