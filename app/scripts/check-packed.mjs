@@ -44,7 +44,7 @@ if (!existsSync(executable)) {
     join('primary-runtime', 'dependencies', 'node', 'bin', windows ? 'node.exe' : 'node'),
     join('office-skills', 'office', 'SKILL.md'),
     join(unpacked, 'node_modules', '@deepseek-ai', 'libreoffice-kit', 'lib', 'cli.js'),
-    join(unpacked, 'node_modules', 'ds-bot', 'office.js'),
+    join(unpacked, 'node_modules', '@lininn', 'ds-bot', 'office.js'),
   ]
   const missing = required.filter((entry) => !existsSync(join(resources, entry)))
   if (missing.length > 0) {

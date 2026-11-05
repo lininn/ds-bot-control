@@ -100,7 +100,7 @@
 自测中发现并修正：
 
 - 换基线时丢失的 `scripts/scan.mjs` 中 `PKG_NAME`，恢复为 `@lininn/ds-bot`，避免泄漏扫描误判包名。
-- Android 构件名仍用退役产品名 `DeepSeek-Bot-android`，改为 `DS-Bot-android`（workflow 与 README）。
+- Android 构件名仍用旧产品名，统一改为 `DS-Bot-android`（workflow 与 README）。
 - 将本地数据与生成物加入 `.gitignore`：`/web/dist/`、`/relay/web-dist/`、`/relay/data/`、`/app/.dshtest/`。
 
 未能执行（环境限制，不计为通过）：

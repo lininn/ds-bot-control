@@ -115,7 +115,8 @@ test('a later launch finds the backup and does not make another', async (t) => {
   assert.deepEqual(backups(home), [backup])
 })
 
-test('a migration that cannot be backed up leaves state.json untouched', async (t) => {
+// chmod does not make a folder unwritable on Windows, so the copy cannot be made to fail there.
+test('a migration that cannot be backed up leaves state.json untouched', { skip: process.platform === 'win32' && 'chmod does not make a folder unwritable on Windows' }, async (t) => {
   const home = homeWith(team())
   const original = readFileSync(join(home, 'state.json'), 'utf8')
   chmodSync(home, 0o500)
