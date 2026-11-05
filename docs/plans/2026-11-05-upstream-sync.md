@@ -61,6 +61,7 @@
 - 旧 `state.json` 里的 `relays`/`relayLimit` 不恢复，只保留在备份和迁移日志里。
 - 新群会话和复制群只改会话生命周期，不改变官方 turn、Goal 或成员权限流程。
 - 发布前仍需完成桌面安装/升级/卸载与手机登录/发消息/群聊手工验证；未执行的平台构建不得写成通过。
+- 每次发布都要同时部署 relay 与匹配版本的 `web-dist`。0.3.0 发布时只发了 GitHub 资产，线上 relay 仍是 0.2.12，导致桌面登录报 “Could not reach the relay”、手机壳缺失；补部署后才恢复。
 - OpenSpec CLI 不在本机，规格自检以文档和测试命令代替 `openspec validate`。
 
 ## 回滚
@@ -133,6 +134,27 @@
 - 真机手机登录、发消息、群聊、记忆与审批的手工验证。自动化覆盖白名单两端一致、请求转发测试与共享客户端构建，但没有真实手机。
 - 用真实宿主 `state.json` 副本做一次启动演练。`state-migration` 测试覆盖备份、保留未知字段与退役设置日志，Docker job 覆盖数据归属迁移，二者都不是这一演练本身。
 
+## 0.3.1 热修
+
+0.3.0 发布后出现两个问题，0.3.1 修复其一，另一个靠补部署解决：
+
+- 线上 relay 仍是 0.2.12/0.2.15（protocol v1），桌面登录与手机壳都不可用。已在 kd1 部署 0.3.0 relay（备份 `/opt/ds-relay-backups/20261105085429`），`/health` 200、`/web-dist/0.3.0/` 200、v1 connector 返回 4003。
+- 换基线时保留了 `app/src/install-app.mjs` 与测试，却漏了 `main.mjs` 的接线：下载的 mac 应用一直在 translocation 路径运行，原文件夹删除后应用消失。`0526927d` 恢复接线（首启安装到 Applications 并打开该副本，失败展示在启动窗口失败页），`app/test/install-wiring.test.mjs` 守住这条接线。
+- 本机恢复：GitHub 直连过慢，改由 kd1 下载 0.3.0 zip 再回传，sha256 与 `SHA256SUMS.txt` 一致；安装为 `/Applications/DS Bot.app`。
+
+0.3.1 发布验证（本机 macOS arm64）：
+
+| 命令 / 检查 | 结果 |
+|---|---|
+| `cd app && node --test "test/*.test.mjs"` | 438 tests，435 pass，3 skipped，0 fail |
+| `cd ds-bot && npm run harness && npm test` | 1675 tests，1673 pass，2 skipped，0 fail |
+| `cd relay && npm test` | 42 tests，42 pass |
+| `cd ds-bot && node scripts/build-client.mjs --check` | 通过（exit 0） |
+| `git archive HEAD` + `node scripts/scan.mjs` | `must fix: 0` |
+| 版本一致性 | 四个包与 `web/manifest.json` 均为 `0.3.1`，`relay/web-dist/0.3.1` 已生成 |
+| kd1 部署 | `https://ds.d-1.top/web-dist/0.3.1/manifest.json` 返回 `0.3.1`；0.3.0 目录仍保留 |
+
 ## 变更
 
 - 2026-11-05：建立本记录、统一 0.3.0 版本并写下基线、迁移与回滚规则。
+- 2026-11-05：补记 0.3.0 发布漏部署 relay/web-dist 与本机安装器接线丢失，发布 0.3.1 热修。
