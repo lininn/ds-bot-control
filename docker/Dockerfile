@@ -20,8 +20,8 @@ COPY ds-bot/ /src/ds-bot/
 # ds-bot has no build step at install (client.js is committed), so pack it as-is
 # and let `dsh plugin add` set up the web profile from dsh's own template.
 RUN cd /src/ds-bot \
-    && npm pack --pack-destination /tmp \
-    && mv /tmp/ds-bot-*.tgz /tmp/ds-bot.tgz \
+    && file="$(npm pack --pack-destination /tmp --silent | tail -n 1)" \
+    && mv "/tmp/$file" /tmp/ds-bot.tgz \
     && DSH_HOME=/opt/dsh-template dsh plugin --profile web add /tmp/ds-bot.tgz
 
 FROM node:24-bookworm-slim
