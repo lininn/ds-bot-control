@@ -4,6 +4,12 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-05
+
+### Fixed
+
+- A macOS app opened from the downloaded zip installs itself into the Applications folder on its first start and opens that copy, so it no longer runs translocated and vanishes with the folder it was opened from. The 0.3.0 rebuild kept the installer but lost the main-process wiring.
+
 ## [0.3.0] - 2026-11-05
 
 This fork release is rebased on upstream DS Bot `71d344bf` (v0.2.7) and keeps the
