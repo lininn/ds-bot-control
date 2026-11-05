@@ -6,7 +6,7 @@ English | [中文](README.zh.md)
 
 ![version](https://img.shields.io/badge/version-v0.2_preview-blue) ![DSH](https://img.shields.io/badge/DSH-0.2.1--rc.5-4D6BFE) ![license](https://img.shields.io/badge/license-Apache_2.0-green)
 
-**[Download DS Bot for Windows 10/11 (64-bit) / 下载 Windows 10/11（64 位）版](https://github.com/Fei2411/DS-Bot/releases/latest)**, about 212 MB / 约 212 MB. A community project, not an official DeepSeek product. / 社区开源项目，不是 DeepSeek 官方产品。
+**[Download DS Bot for Windows 10/11 (64-bit) / 下载 Windows 10/11（64 位）版](https://github.com/lininn/ds-bot-control/releases/latest)**, about 212 MB / 约 212 MB. A community project, not an official DeepSeek product. / 社区开源项目，不是 DeepSeek 官方产品。
 
 On that page, download `DS-Bot-<version>-win-x64.exe`. Double-click it to install; DS Bot opens when it is done. No administrator rights, no Node or DSH needed. You need a DeepSeek account (you can sign up with a phone number on the spot) or a DeepSeek API key. DeepSeek bills by usage: see [its prices](https://api-docs.deepseek.com/quick_start/pricing). For macOS, Linux or the DSH plugin, see [Install](README.md#install).
 
@@ -23,7 +23,7 @@ The installer is not signed yet, so Windows does not know its publisher.
 - An antivirus blocks it: check the file first. In Command Prompt, run `certutil -hashfile <file> SHA256` and compare the result with the file's line in `SHA256SUMS.txt` on the release page. If they match, choose to trust the file in the antivirus.
 - The installer says it could not uninstall the old version: close DS Bot and run the installer again. If your antivirus stopped the installer, check and trust it as above first.
 
-Still stuck? [Report an install problem](https://github.com/Fei2411/DS-Bot/issues/new?template=install.yml).
+Still stuck? [Report an install problem](https://github.com/lininn/ds-bot-control/issues/new?template=install.yml).
 
 安装包还没有签名，所以 Windows 认不出发布者。
 
@@ -33,7 +33,7 @@ Still stuck? [Report an install problem](https://github.com/Fei2411/DS-Bot/issue
 - 杀毒软件拦截：先核对文件。在命令提示符里运行 `certutil -hashfile <文件> SHA256`，和 Release 页上 `SHA256SUMS.txt` 里这个文件的那一行比较，一致后再在杀毒软件里选「信任」。
 - 安装时提示卸载旧版失败：先关掉 DS Bot，再运行一次安装包。杀毒软件拦了安装包时，先按上面的方法核对，选「信任」。
 
-还是装不上？[报告安装问题](https://github.com/Fei2411/DS-Bot/issues/new?template=install.yml)。
+还是装不上？[报告安装问题](https://github.com/lininn/ds-bot-control/issues/new?template=install.yml)。
 </details>
 
 **DS Bot**: the desktop app, the project and the plugin / 桌面应用、项目和插件 · **DeepSeek Harness (DSH)**: what they are built on / 它们的底层
@@ -42,11 +42,34 @@ DS Bot is a bot plugin for [DeepSeek Harness](https://github.com/deepseek-ai/dee
 
 ![Say one sentence to Chief, and it sets up the bots and the group chat](docs/images/team.png)
 
+## Quick start
+
+The shortest way to get a team running, and to drive it from your phone:
+
+```sh
+npm install -g @lininn/ds-bot
+ds-bot start          # starts DSH Web in the background and prints its address
+```
+
+Open the address it prints. `ds-bot status`, `ds-bot stop` and `ds-bot restart` manage it; the team keeps running after the terminal closes.
+
+Now connect the phone:
+
+1. In the web UI, open **Settings** → **Remote control**.
+2. Follow the WeChat official account **html5开发分享** to get an invite code, register with it, then sign in on that page with the same account.
+3. On the phone, open <https://ds.d-1.top>, sign in, and pick this computer from the device list.
+
+The computer keeps one outbound WebSocket to the relay and opens no port; the phone reaches only the phone-safe part of the Bot API.
+
+![How remote control works](docs/images/architecture.png)
+
+Prefer the desktop app? Download it from [Releases](https://github.com/lininn/ds-bot-control/releases); the same remote-control steps apply.
+
 ## Install
 
 **Desktop app (Windows, macOS, Linux)**
 
-The desktop app brings its own DSH, so you don't need to install DSH first. Download it from [Releases](https://github.com/Fei2411/DS-Bot/releases):
+The desktop app brings its own DSH, so you don't need to install DSH first. Download it from [Releases](https://github.com/lininn/ds-bot-control/releases):
 
 - Windows (x64): `DS-Bot-<version>-win-x64.exe`. Run it; it installs for your user only, without administrator rights. If Windows shows "Windows protected your PC", select **More info** → **Run anyway**. For other warnings and blocks, open **The browser or Windows warns you, or blocks the installer?** at the top of this page.
 - macOS: `DS-Bot-<version>-mac-arm64.zip` for an Apple chip, `DS-Bot-<version>-mac-x64.zip` for Intel. Safari unzips it by itself; drag **DS Bot** into **Applications** and open it. When macOS says it cannot check the app, open **System Settings** → **Privacy & Security** and select **Open Anyway**.
@@ -54,7 +77,7 @@ The desktop app brings its own DSH, so you don't need to install DSH first. Down
 
 At the first start the app keeps its data and the Bots' files in your home folder; the start window says where and lets you change it in one click. It offers to copy a Bot team from your DSH (it only reads your DSH). Set up a model in its settings. The Windows app and the Linux AppImage update themselves; the macOS app and the Linux deb tell you when a new version is ready to download.
 
-If the app does not download, install or start, [report an install problem](https://github.com/Fei2411/DS-Bot/issues/new?template=install.yml); it needs no diagnostics.
+If the app does not download, install or start, [report an install problem](https://github.com/lininn/ds-bot-control/issues/new?template=install.yml); it needs no diagnostics.
 
 **Desktop app from source (Windows)**
 
@@ -67,21 +90,34 @@ First install DSH and set up at least one model in it. DS Bot uses the models fr
 **DSH Desktop (Windows, macOS)**
 
 1. In the sidebar, select **Plugins** → **Add plugin**.
-2. In **Package name or address**, enter `ds-bot`. In mainland China, set **Registry** to **Mainland China mirror**.
+2. In **Package name or address**, enter `@lininn/ds-bot`. In mainland China, set **Registry** to **Mainland China mirror**.
 3. Select **Install**, then **Enable now**. If DSH says the change takes effect at the next start, quit DSH completely and open it again.
 
-If npm is not reachable, in step 2 you can also enter the full path of `ds-bot-<version>.tgz` downloaded from [Releases](https://github.com/Fei2411/DS-Bot/releases), or `github:Fei2411/DS-Bot#v<version>&path:/ds-bot` (needs Git).
+If npm is not reachable, in step 2 you can also enter the full path of `lininn-ds-bot-<version>.tgz` downloaded from [Releases](https://github.com/lininn/ds-bot-control/releases), or `github:lininn/ds-bot-control#v<version>&path:/ds-bot` (needs Git).
 
-DS Bot 0.2.1 and earlier cannot update themselves in DSH Desktop 0.2.1-rc.2 or later: on the Plugins page, remove `ds-bot` and add `ds-bot` again. The Bots, chats and memory stay.
+Coming from the older `ds-bot` package: on the Plugins page, remove `ds-bot` and add `@lininn/ds-bot` again. The Bots, chats and memory stay.
 
 **DSH Web (Windows, macOS, Linux)**
 
 Needs Node.js `22.19` or later, and pnpm. On Linux it needs the same glibc 2.28 or newer as the desktop app — the DSH install loads its own native libraries, so CentOS 7 and other older-glibc systems take the Docker route below instead.
 
 ```sh
-npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add ds-bot
+npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add @lininn/ds-bot
 npx @deepseek-ai/dsh@0.2.1-rc.5 web
 ```
+
+To keep that web UI running in the background — so the team stays reachable from a phone — the package also ships a small `ds-bot` command:
+
+```sh
+npm install -g @lininn/ds-bot          # then: ds-bot start
+npx -p @lininn/ds-bot ds-bot start     # or without a global install
+
+ds-bot status    # whether it runs, with the pid, url and log
+ds-bot stop      # stop it
+ds-bot restart   # stop, then start
+```
+
+It boots `dsh --profile web --no-open`; `--port` and `--host` choose the listener, and `--json` prints status as JSON. When `dsh` is not installed, `start` runs this package's pinned DSH release through `npx` and adds the plugin to the profile, so the global install above is all you need. See [Command line](ds-bot/README.md#command-line).
 
 **Docker (NAS, Linux server)**
 
@@ -136,6 +172,10 @@ In **Settings** → **Usage**, you can see token usage by time, by bot and by mo
 ### Office files
 
 Bots work with Office documents. They can create and edit .docx, .pptx and .xlsx, read a document's structure with stable ids, check a package for the defects Office would refuse, make targeted edits (comments, tracked changes, fields, table cells), reorder or duplicate slides, list workbook errors, and review rendered pages on a contact sheet. The desktop app includes everything needed; in DSH Desktop Bots use DSH's Office runtime plus DS Bot's commands; in DSH Web the inspect, check and edit commands work, while creating files from scratch and rendering pages need the desktop app or DSH Desktop.
+
+### Remote control
+
+Settings → **Remote control** lets a phone drive this team. The computer keeps one outbound WebSocket to a relay, so no port is opened here. Sign in on the settings page with a blog account (follow the WeChat official account **html5开发分享** for an invite code), then open the relay's website on the phone and pick this computer. One account can bind several computers: the phone shows a device list when more than one is online, and **Switch device** in the shell's header returns to it. The public relay is `https://ds.d-1.top`, used when no other address is set; a deployment with its own relay sets `relay.url` or `DS_BOT_RELAY_URL`. Only the phone-safe part of the Bot API is reachable. See [Remote control](ds-bot/README.md#remote-control) and [`relay/`](relay/README.md).
 
 ## Data
 

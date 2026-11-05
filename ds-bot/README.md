@@ -35,15 +35,15 @@ Tested with dsh `0.2.1-rc.5` (Web and Desktop).
 
 The [project page](../README.md#install) has the full steps for dsh Desktop and dsh Web. In short:
 
-- dsh Desktop: Settings → Plugins → add `ds-bot` (npm), a `.tgz` file, or `github:Fei2411/DS-Bot#v<version>&path:/ds-bot`.
-- Command line: `dsh plugin --profile desktop add ds-bot` (or `--profile web`).
+- dsh Desktop: Settings → Plugins → add `@lininn/ds-bot` (npm), a `.tgz` file, or `github:lininn/ds-bot-control#v<version>&path:/ds-bot`.
+- Command line: `dsh plugin --profile desktop add @lininn/ds-bot` (or `--profile web`).
 
 To work on the plugin from a checkout, add it to a dsh profile as a linked dependency and a bundle:
 
 ```json
 {
-  "dependencies": { "ds-bot": "link:/path/to/ds-bot" },
-  "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "ds-bot"] } }
+  "dependencies": { "@lininn/ds-bot": "link:/path/to/ds-bot" },
+  "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@lininn/ds-bot"] } }
 }
 ```
 
@@ -55,7 +55,25 @@ pnpm -s dsh --profile web --no-open
 
 The first time the team opens, the plugin creates a Main Bot called Chief.
 
-**Upgrading from the legacy `dsh-bot` package**: earlier builds used the package name `dsh-bot`. Remove `dsh-bot` from the profile before you add `ds-bot`, because both use the plugin id `bot`. Your team, chats and secrets stay where they are (see [Data and backups](#data-and-backups)); saved browser settings, the theme and Bot colors move over the first time DS Bot opens.
+**Upgrading from the legacy `dsh-bot` package**: earlier builds used the package name `dsh-bot`. Remove `dsh-bot` from the profile before you add `@lininn/ds-bot`, because both use the plugin id `bot`. Your team, chats and secrets stay where they are (see [Data and backups](#data-and-backups)); saved browser settings, the theme and Bot colors move over the first time DS Bot opens.
+
+## Command line
+
+`ds-bot` keeps the dsh web UI running in the background, so the Bot team (and remote control) stay reachable after the shell that started them exits. Install it globally, or call it through npx, and one command is enough:
+
+```sh
+npm install -g @lininn/ds-bot        # then: ds-bot <command>
+npx -p @lininn/ds-bot ds-bot <command>   # or without a global install
+
+ds-bot start      # start in the background; does nothing if it is already running
+ds-bot status     # whether it runs, with the pid, url and log
+ds-bot stop       # stop it
+ds-bot restart    # stop, then start
+```
+
+When `dsh` is on `PATH` (or `DS_BOT_DSH`/`--dsh` names one), it runs that. Otherwise `start` runs the release this package is built for through `npx` (`dsBot.verifiedDsh` in its `package.json`, `DS_BOT_DSH_VERSION` overrides it) and adds `@lininn/ds-bot` to the profile when the profile does not list it yet, so you do not install dsh or the plugin by hand. `--no-setup` turns that profile change off.
+
+It boots `dsh --profile web --no-open` and keeps a pidfile, a log and the URL in `$DSH_HOME/ds-bot-web` (`--state-dir` overrides). Useful options: `--port`/`--host` to choose the listener, `--profile` for another profile, `--timeout <sec>` for how long `start` waits for the port (0 does not wait), and `--json` for status. `--dsh-arg` forwards one extra argument to `dsh` and may be repeated. `stop` refuses to kill a recycled pid that is not dsh, and `status` exits 3 when nothing is running. On macOS or Linux a launchd or systemd unit can call `ds-bot start` instead of managing it by hand.
 
 ## Configuration
 
@@ -63,7 +81,7 @@ Options go in the profile's `cordis.patch.yml`, under the `bot` entry. All of th
 
 ```yaml
 - id: bot
-  name: ds-bot
+  name: '@lininn/ds-bot'
   config:
     workspace: /path/to/workspace   # where the Bots work; default <home>/workspace
     home: /path/to/bot-data         # where the team is saved; default $DSH_HOME/bot
@@ -80,6 +98,18 @@ Options go in the profile's `cordis.patch.yml`, under the `bot` entry. All of th
 **Updates**: when a window opens, DS Bot asks where it was installed from for a newer release: the npm registry (the one the DSH plugin manager installs from, then its fallbacks), or the latest GitHub release for a `github:…#vX.Y.Z` install. A newer version shows a cloud button at the top right of the sidebar; **Update** reinstalls DS Bot through the DSH plugin manager, and the new version runs from the next DSH start. A linked or local checkout is never offered an update. Settings → About DS Bot shows the same state, with **Check for updates** to ask again at once.
 
 The same card can carry DSH itself: a DS Bot release may name the DSH release it was verified against (`dsBot.verifiedDsh` in its `package.json`), and only that version is offered — running something newer is a downgrade offer too. A release that names no version offers no DSH update. A DSH installed from npm is swapped by `npm install -g @deepseek-ai/dsh@<version>`. DSH Desktop installs the newest release its own updater finds, so the card shows DSH there only when that release is the verified one, and **Open updates** opens the app's update panel. A release may raise the floor with `dsBot.minBot`: until the bot itself is that new, the DSH row waits.
+
+## Remote control
+
+Settings → **Remote control** lets a phone drive this team. The computer keeps one outbound WebSocket to a relay, so no port is opened here; the phone signs in on the relay's website and picks this computer. The public relay is `https://ds.d-1.top`, used when no other address is set.
+
+- Sign in with a blog account in the settings page. The relay's access token and this computer's device id are kept in `relay.json` under the team home (`<home>/relay.json`, readable by the owner only); the token is never shown again. **Sign out** forgets it.
+- One account can bind several computers. The phone shows a device list when more than one is online, and a **Switch device** button in the shell's header returns to it.
+- The address is taken from the saved value first, then `relay.url`, then `DS_BOT_RELAY_URL`, then the built-in default. A blank value counts as unset, so an empty `DS_BOT_RELAY_URL` cannot hide the default. A deployment that runs its own relay sets `relay.url` (or the environment variable) and can sign in on its own address from the settings page.
+- `relay: false` (or `enabled: false`) turns the feature off completely. A profile `token` binds a machine without the settings page, for a deployment that pairs machines itself.
+- Only the phone-safe part of the Bot API is reachable: provider, secret, diagnostics, update and relay endpoints are refused at both the relay and the connector.
+
+The relay itself is in [`relay/`](../relay/README.md), with its deployment notes.
 
 ## Models
 
@@ -115,7 +145,7 @@ A read-only dsh (see [Data and backups](#data-and-backups)) shows memory but can
 
 ## Web search
 
-The package includes a second plugin, `ds-bot/web-search`. It registers the search provider `auto`, and `cordis.patch.yml` makes it the default. Each search goes in this order:
+The package includes a second plugin, `@lininn/ds-bot/web-search`. It registers the search provider `auto`, and `cordis.patch.yml` makes it the default. Each search goes in this order:
 
 1. If the profile names another `searchProvider`, that one is used.
 2. The current model route's own search, with that route's key and host. The plugin knows the Anthropic Messages, OpenAI Responses and Gemini protocols, and a few search APIs (Ollama, Kimi, Zhipu, MiMo). Add more with `searchApis`.
@@ -128,7 +158,7 @@ Each result starts with a `Search backend: …` line that names the path it took
 
 ```yaml
 - id: web-search-auto
-  name: ds-bot/web-search
+  name: '@lininn/ds-bot/web-search'
   disabled: true
 - id: web
   name: '@deepseek-ai/dsh-web'
@@ -256,3 +286,28 @@ dev/check.sh                             # all checks (see below)
 ## License
 
 [Apache-2.0](LICENSE)
+
+## 中文
+
+DS Bot 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的 bot 插件。它把 DSH 变成一个由长期在线的 Bot 组成的团队：你可以和 Bot 一对一聊，也可以让几个 Bot 在群聊里协作，还能用手机远程驱动这个团队。
+
+完整的中文介绍、桌面应用下载和安装说明见[中文项目页](https://github.com/lininn/ds-bot-control/blob/main/README.zh.md)。
+
+### 快速开始
+
+```sh
+npm install -g @lininn/ds-bot
+ds-bot start          # 在后台启动 dsh Web，并打印访问地址
+```
+
+用浏览器打开它打印的地址。`ds-bot status`、`ds-bot stop`、`ds-bot restart` 用来查看、停止和重启；关掉终端后团队仍在运行。
+
+接下来接上手机：
+
+1. 网页里打开 **设置** → **远程控制**。
+2. 关注微信公众号 **html5开发分享** 获取邀请码，用它注册，再在这个页面用同一个账号登录。
+3. 手机上打开 <https://ds.d-1.top>，登录后从设备列表里选这台电脑。
+
+电脑只向 relay 保持一条出站 WebSocket，本机不开端口；手机只能访问 Bot API 里对手机安全的那部分。
+
+![远程控制是怎么工作的](https://raw.githubusercontent.com/lininn/ds-bot-control/main/docs/images/architecture.zh.png)
