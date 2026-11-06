@@ -91,6 +91,11 @@ test('a logged-in phone drives a fake desktop through the relay', { timeout: 20_
   const base = `http://127.0.0.1:${port}`
   const origin = { origin: base }
 
+  // A `no-referrer` policy makes Chrome send `Origin: null` on the login form's same-origin
+  // POST, which the CSRF check rejects; the page must keep a policy that preserves Origin.
+  const loginPage = await fetch(`${base}/login`)
+  assert.equal(loginPage.headers.get('referrer-policy'), 'same-origin')
+
   // A desktop signs in to enable remote control: it gets a device credential, not the
   // account's access token, and needs no device to be online yet.
   const desktop = await fetch(`${base}/api/desktop/login`, {

@@ -421,7 +421,10 @@ function matchApi(pathname) {
 
 async function route(req, res) {
   res.setHeader('x-content-type-options', 'nosniff')
-  res.setHeader('referrer-policy', 'no-referrer')
+  // Keep `no-referrer` off this response: Chrome serializes a same-origin form POST's Origin
+  // as `null` under that policy, which makes the CSRF check below reject real sign-ins with
+  // 403. `same-origin` still withholds the referrer from other sites while preserving Origin.
+  res.setHeader('referrer-policy', 'same-origin')
   res.setHeader('permissions-policy', 'geolocation=(), camera=(), microphone=()')
   res.setHeader('x-frame-options', 'DENY')
   res.setHeader('content-security-policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
