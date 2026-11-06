@@ -154,7 +154,35 @@
 | 版本一致性 | 四个包与 `web/manifest.json` 均为 `0.3.1`，`relay/web-dist/0.3.1` 已生成 |
 | kd1 部署 | `https://ds.d-1.top/web-dist/0.3.1/manifest.json` 返回 `0.3.1`；0.3.0 目录仍保留 |
 
+## 0.3.2 依赖回退
+
+桌面应用、插件的测试用 harness 与 `test.yml` 的兼容线统一回到 DeepSeek Harness `0.2.1-rc.2`（原 `0.2.1-rc.5`）。`dsBot.verifiedDsh`、两份 README、`ds-bot/README.md`、known-issues、发版检查表和 `openspec/config.yaml` 的基线说明跟着改；`0.2.2-rc.1` 仍不进入本版本。
+
+- `app/package-lock.json` 由 `npm install` 重新生成：除 `@deepseek-ai/*` 外只有补丁级版本变化（36 个包），没有新增直接依赖。
+- 版本：`app`/`ds-bot`/`relay`/`web`/`web/manifest.json` 均为 `0.3.2`；`relay/web-dist/0.3.2` 已生成，保留 `0.3.1` 旧壳。
+- release 工作流没有改动，标签仍是 `v<版本>` 且必须落在 `main` 上。
+
+0.3.2 发布验证（本机 macOS arm64，DSH 0.2.1-rc.2）：
+
+| 命令 / 检查 | 结果 |
+|---|---|
+| `cd ds-bot && npm run harness && npm test` | 1675 tests，1673 pass，2 skipped，0 fail |
+| `cd ds-bot && node scripts/build-client.mjs --check` | 通过（exit 0） |
+| `cd ds-bot && npm run lint` | 40 warning，0 error |
+| `cd app && npm install`（清空 `node_modules` 重装） | rc.2 依赖解析通过；`@deepseek-ai/dsh` 为 `0.2.1-rc.2` |
+| `cd app && node --test "test/*.test.mjs"` | 438 tests，435 pass，3 skipped，0 fail |
+| `cd relay && npm test` | 42 tests，42 pass |
+| `cd web && npm run build` + `node relay/scripts/sync-web.mjs 0.3.2` | `relay/web-dist/0.3.2` 与 `web/dist` 内容一致（仅多 `manifest.json`） |
+| `git archive HEAD` + `node scripts/scan.mjs` | `must fix: 0`；`can stay: 433` |
+
+本轮未做，发版前仍需完成：
+
+- 真机检查表（`docs/dev/release-checklist.md`）在 Windows 与 macOS 上逐项跑一遍。
+- GitHub 上把 tag `v0.3.2` 推到 `main` 并发布 release，让 `release.yml` 打包三个平台。
+- kd1 同时部署 relay 与 `web-dist/0.3.2`（0.3.0 漏部署的教训）。
+
 ## 变更
 
 - 2026-11-05：建立本记录、统一 0.3.0 版本并写下基线、迁移与回滚规则。
 - 2026-11-05：补记 0.3.0 发布漏部署 relay/web-dist 与本机安装器接线丢失，发布 0.3.1 热修。
+- 2026-11-06：DSH 依赖回到 `0.2.1-rc.2`，版本统一到 0.3.2。
