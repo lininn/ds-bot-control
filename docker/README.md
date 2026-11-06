@@ -197,7 +197,7 @@ from the repository root would use the local root Compose file instead.
 ```yaml
 services:
   ds-bot:
-    image: ghcr.io/fei2411/ds-bot:dev
+    image: ghcr.io/lininn/ds-bot-control:dev
     ports:
       - "13080:3080"
     environment:

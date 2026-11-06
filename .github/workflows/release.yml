@@ -7,8 +7,8 @@ name: Release
 #
 # npm Trusted Publishing: npm trusts this workflow through GitHub's OIDC token, so the
 # repository keeps no npm token, and every version gets a provenance statement. It is set
-# up once on npmjs.com: package ds-bot → Settings → Trusted Publisher → GitHub Actions,
-# user Fei2411, repository DS-Bot, workflow release.yml, no environment.
+# up once on npmjs.com: package @lininn/ds-bot → Settings → Trusted Publisher → GitHub Actions,
+# user lininn, repository ds-bot-control, workflow release.yml, no environment.
 #
 # The release tag must be v<version in ds-bot/package.json> and must point at a commit on
 # main. A version with a pre-release part (0.2.0-rc.1) goes to the npm tag "next", so that
@@ -92,9 +92,12 @@ jobs:
         run: npm pack --dry-run
 
       - name: Publish
-        # This fork ships the desktop app through the release; npm Trusted Publishing is set up
-        # on the upstream repository, so only upstream publishes the package.
-        if: (github.event_name == 'release' || (!inputs.dry_run && github.ref == 'refs/heads/main')) && github.repository == 'Fei2411/DS-Bot'
+        # Trusted Publishing is configured for this repository's workflow on npmjs.com, so a
+        # release anywhere else does not try to publish the package. npm is not the way this
+        # fork ships the desktop app: if publishing is not configured yet, the release and its
+        # installers still ship, and this step reports the npm failure.
+        continue-on-error: true
+        if: (github.event_name == 'release' || (!inputs.dry_run && github.ref == 'refs/heads/main')) && github.repository == 'lininn/ds-bot-control'
         run: |
           tag="$(node -p "require('./package.json').version.includes('-') ? 'next' : 'latest'")"
           echo "Publishing $(node -p "require('./package.json').version") with the npm tag $tag"
