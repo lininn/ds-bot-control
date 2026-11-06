@@ -9,6 +9,7 @@ import { inspect } from 'node:util'
 import { loadLayeredEnv, reportSkippedBundles } from '@deepseek-ai/dsh-app-boot'
 import { runProfile } from '@deepseek-ai/dsh/profile-boot'
 import { writeAppPatch } from './app-patch.mjs'
+import { packageManagerEnv } from './host-process.mjs'
 import { CHECK_PROFILE, INSTALL_ANCHOR, loadAppProfile, loadCheckProfile, PROFILE } from './profile.mjs'
 import { reconcileGoal } from './goal-patch.mjs'
 import { reconcileOfficeRuntime } from './office-patch.mjs'
@@ -63,7 +64,7 @@ async function main() {
     patchFiles: check === undefined ? [...writeAppPatch(profile), ...reconcileSearchSelector(profile), ...reconcileGoal(profile), ...office.patchFiles] : [],
     args: ['--no-open', '--port', process.env.DS_BOT_PORT || '0'],
     ...(pnpm === undefined ? {} : {
-      packageManager: { command: process.execPath, args: ['--expose-internals', pnpm], env: { ELECTRON_RUN_AS_NODE: '1' } },
+      packageManager: { command: process.execPath, args: ['--expose-internals', pnpm], env: packageManagerEnv(process.env, process.env.DS_BOT_RUNTIME_DIR) },
     }),
   })
   let stopping

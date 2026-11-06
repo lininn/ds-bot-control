@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { delimiter, dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import * as host from '../src/host-process.mjs'
@@ -13,6 +13,21 @@ test('Linux uses the bundled plain Node, not Electron in Node mode', () => {
   for (const platform of ['darwin', 'win32']) {
     assert.equal(host.hostExecutable(resources, platform), process.execPath)
   }
+})
+
+test('plugin installs find the Node the app ships', () => {
+  const resources = join('application', 'resources')
+  const env = host.packageManagerEnv({ PATH: join('usr', 'bin') }, resources)
+  assert.equal(env.ELECTRON_RUN_AS_NODE, '1')
+  assert.deepEqual(env.PATH.split(delimiter), [
+    join(resources, 'primary-runtime', 'dependencies', 'node', 'bin'),
+    join('usr', 'bin'),
+  ])
+})
+
+test('without a runtime dir the environment keeps the PATH it was given', () => {
+  const path = [join('usr', 'bin'), join('bin')].join(delimiter)
+  assert.deepEqual(host.packageManagerEnv({ PATH: path }, undefined), { ELECTRON_RUN_AS_NODE: '1', PATH: path })
 })
 
 test('the Linux Host loads sharp only in its plain Node child', { skip: process.platform === 'win32' }, async () => {

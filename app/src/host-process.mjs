@@ -1,7 +1,7 @@
 // Runs the Host in plain Node on Linux, Electron's Node mode elsewhere, and owns its lifetime.
 // Follows DeepSeek Harness apps/desktop/src/host-process.ts (MIT); see NOTICE.
 import { spawn } from 'node:child_process'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 
 const STDERR_TAIL_CHARS = 8 * 1024
 
@@ -10,6 +10,16 @@ export function hostExecutable(runtimeDir, platform = process.platform) {
   return platform === 'linux'
     ? join(runtimeDir, 'primary-runtime', 'dependencies', 'node', 'bin', 'node')
     : process.execPath
+}
+
+// A package's install scripts look up `node` on PATH. A window opened from Finder has no
+// Node there, and pnpm only appends the directory of the binary running it — this app's
+// Electron, which is not named `node`. Put the Node this installation ships first, so an
+// install works without a system Node.
+export function packageManagerEnv(env, runtimeDir) {
+  const nodeBin = runtimeDir === undefined ? undefined : join(runtimeDir, 'primary-runtime', 'dependencies', 'node', 'bin')
+  const path = [nodeBin, env.PATH].filter(Boolean).join(delimiter)
+  return { ELECTRON_RUN_AS_NODE: '1', ...(path === '' ? {} : { PATH: path }) }
 }
 
 // The web server prints its launch URL, and the launch token in it opens the Host.
