@@ -1,6 +1,6 @@
 {
   "name": "@lininn/ds-bot",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "DS Bot: a team of long-lived Bots for DeepSeek Harness, with Main Bots, Bot-to-Bot messages and group chats",
   "keywords": [
     "dsh-plugin",
@@ -71,7 +71,7 @@
     }
   },
   "dsBot": {
-    "verifiedDsh": "0.2.1-rc.5"
+    "verifiedDsh": "0.2.1-rc.2"
   },
   "devDependencies": {
     "@xmldom/xmldom": "0.9.12",

@@ -102,8 +102,8 @@ ds-bot start          # 在后台启动 dsh Web，并打印访问地址
 需要 Node.js `22.19` 以上和 pnpm。Linux 上它和桌面应用一样要求 glibc 2.28 及以上——dsh 自身会加载原生库，CentOS 7 这类旧 glibc 系统请走下面的 Docker 路线。
 
 ```sh
-npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add @lininn/ds-bot
-npx @deepseek-ai/dsh@0.2.1-rc.5 web
+npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add @lininn/ds-bot
+npx @deepseek-ai/dsh@0.2.1-rc.2 web
 ```
 
 想让这个 Web UI 在后台一直运行（这样手机端随时能找到这个团队），包里还带了一个 `ds-bot` 命令：

@@ -21,7 +21,7 @@ context: |
     - relay/：node:http + ws，账号登录与桌面出站 connector。
     - web/：Vite 8 + React 19 手机 Web 壳，复用 ds-bot/src/client 与 app/ui。
     - android/：Gradle WebView 外壳。
-    - 当前基线固定 DSH 0.2.1-rc.5；官方 dev 分支使用 0.2.2-rc.1，本轮不默认升级。
+    - 当前基线固定 DSH 0.2.1-rc.2；官方 dev 分支使用 0.2.2-rc.1，本轮不默认升级。
 
   Architecture:
     - 本地 main 与 upstream/main 没有共同祖先；基线为官方 v0.2.3（4a7b5506）加初始导入。

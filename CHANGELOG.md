@@ -4,6 +4,13 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-06
+
+### Changed
+
+- The desktop app, the plugin's test harness and the compatibility lanes of the test workflow pin DeepSeek Harness `0.2.1-rc.2` instead of `0.2.1-rc.5`; `dsBot.verifiedDsh`, the READMEs, the known-issues commands, the release checklist and the baseline note follow the same version. DSH `0.2.2-rc.1` stays out of this release.
+- `app`, `ds-bot`, `relay`, `web` and `web/manifest.json` share version `0.3.2`, so the desktop app and the web shell match the plugin.
+
 ## [0.3.1] - 2026-11-05
 
 ### Fixed

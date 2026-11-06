@@ -102,8 +102,8 @@ Coming from the older `ds-bot` package: on the Plugins page, remove `ds-bot` and
 Needs Node.js `22.19` or later, and pnpm. On Linux it needs the same glibc 2.28 or newer as the desktop app — the DSH install loads its own native libraries, so CentOS 7 and other older-glibc systems take the Docker route below instead.
 
 ```sh
-npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add @lininn/ds-bot
-npx @deepseek-ai/dsh@0.2.1-rc.5 web
+npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add @lininn/ds-bot
+npx @deepseek-ai/dsh@0.2.1-rc.2 web
 ```
 
 To keep that web UI running in the background — so the team stays reachable from a phone — the package also ships a small `ds-bot` command:
