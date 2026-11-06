@@ -4,6 +4,16 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-06
+
+### Changed
+
+- The desktop app checks for updates and links downloads at this repository (`lininn/ds-bot-control`) instead of the upstream project, and the release workflow publishes and attaches its files there.
+
+### Fixed
+
+- Installing a plugin from the desktop window no longer fails with `sh: node: command not found` when its `postinstall` runs `node`. pnpm gives install scripts the directory of the binary running it — the app's Electron, which is not `node` — so the app now puts the Node it ships first on that PATH, and an install works on a machine with no system Node.
+
 ## [0.3.2] - 2026-11-06
 
 ### Changed
