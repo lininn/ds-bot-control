@@ -486,11 +486,22 @@ async function chat(cdp) {
   } catch (error) {
     throw new Error(`${error.message}; composer: ${await composerState()}`)
   }
-  for (const type of ['keyDown', 'keyUp']) await cdp.call('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
-  try {
-    await until(`!(${box}?.innerText ?? '').includes('packaged app check')`, 'Enter to send the message', 10_000)
-  } catch (error) {
-    throw new Error(`${error.message}; composer: ${await composerState()}`)
+  // The greeting that arrives at first launch can still be streaming (and the field rebinding)
+  // after the button first enables, and DSH drops an Enter then. Keep pressing it while the
+  // draft stays, as a user would, until the message is sent.
+  const pressEnter = async () => {
+    for (const type of ['keyDown', 'keyUp']) await cdp.call('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
+  }
+  const sendDeadline = Date.now() + 60_000
+  let sent = false
+  while (!sent) {
+    await pressEnter()
+    try {
+      await until(`!(${box}?.innerText ?? '').includes('packaged app check')`, 'Enter to send the message', 5_000)
+      sent = true
+    } catch (error) {
+      if (Date.now() >= sendDeadline) throw new Error(`${error.message}; composer: ${await composerState()}`)
+    }
   }
   // The mock model starts its reply with 收到： and the message.
   try {
