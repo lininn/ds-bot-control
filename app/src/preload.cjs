@@ -1,9 +1,10 @@
 // Gives the page that the app's Host serves the app's own bridge, and the app's start page its
-// own, smaller one; each window's arguments name the one page that gets it. On Windows it also
-// marks the Host's page for the frameless window the way DSH Desktop's preload does
-// (apps/desktop/src/preload-windows.ts, preload-platform.ts and preload-theme.ts; see NOTICE),
-// but without data-platform: that puts DSH's shortcuts on native menu input, which this
-// window does not have.
+// own, smaller one; each window's arguments name the one page that gets it. On Windows and
+// macOS it also marks the Host's page for the frameless window the way DSH Desktop's preload
+// does on Windows (apps/desktop/src/preload-windows.ts, preload-platform.ts and
+// preload-theme.ts; see NOTICE), but without data-platform: that puts DSH's shortcuts on
+// native menu input, which this window does not have. So macOS takes DSH's caption-band
+// layout too, with the traffic lights where Windows has its caption buttons' band.
 const { contextBridge, ipcRenderer } = require('electron')
 
 const argument = name => process.argv.find(value => value.startsWith(`--${name}=`))?.slice(name.length + 3)
@@ -46,6 +47,19 @@ if (startPage !== undefined) {
     browser: browserBridge(),
     // The app's own updater, for the About row's state and buttons.
     updates: updatesBridge(),
+    // Computer use: the OS idle time behind the foreground gate, and the floating
+    // indicator's entries; the window answers its buttons.
+    idleSeconds: () => ipcRenderer.invoke('ds-bot:idle-seconds'),
+    computer: (entries) => { ipcRenderer.send('ds-bot:computer', computerEntriesOf(entries)) },
+    computerCursor: (event) => { const clean = cursorEventOf(event); if (clean !== undefined) ipcRenderer.send('ds-bot:computer-cursor', clean) },
+    onComputerAction: (run) => {
+      if (typeof run !== 'function') return
+      ipcRenderer.removeAllListeners('ds-bot:computer-action')
+      ipcRenderer.on('ds-bot:computer-action', (_event, action) => {
+        if (action === null || typeof action !== 'object' || typeof action.kind !== 'string') return
+        run({ kind: action.kind, botId: typeof action.botId === 'string' ? action.botId : null })
+      })
+    },
   })
   // Only plain numbers cross; the main process checks that they make a box inside the page.
   const placeOf = (value) => {
@@ -57,6 +71,47 @@ if (startPage !== undefined) {
       place[key] = number
     }
     return place
+  }
+  // Cursor events carry the Bot's last point: finite numbers, an enum, booleans,
+  // bounded strings, a hex color and an optional bounded avatar data URL.
+  const cursorEventOf = (value) => {
+    if (value === null || typeof value !== 'object') return undefined
+    const clean = {}
+    for (const key of ['x', 'y']) {
+      const number = Number(value[key])
+      if (!Number.isFinite(number)) return undefined
+      clean[key] = number
+    }
+    clean.mode = value.mode === 'point' ? 'point' : 'window'
+    clean.ripple = value.ripple === true
+    clean.botId = String(value.botId ?? '').slice(0, 80)
+    if (clean.botId === '') return undefined
+    if (typeof value.windowId === 'number' && Number.isFinite(value.windowId)) clean.windowId = value.windowId
+    if (Number.isInteger(value.pid)) clean.pid = value.pid
+    if (Number.isFinite(value.seq)) clean.seq = value.seq
+    if (Number.isFinite(value.t)) clean.t = value.t
+    if (typeof value.color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(value.color)) clean.color = value.color
+    if (typeof value.avatar === 'string' && /^data:image\/(png|jpeg|webp|svg\+xml);base64,[a-zA-Z0-9+/=]+$/.test(value.avatar) && value.avatar.length <= 12000) clean.avatar = value.avatar
+    return clean
+  }
+  const computerEntriesOf = (value) => {
+    const rows = Array.isArray(value?.rows) ? value.rows : []
+    const labels = value?.labels ?? {}
+    return {
+      rows: rows.map((entry) => {
+        if (entry === null || typeof entry !== 'object' || typeof entry.label !== 'string') return undefined
+        return {
+          label: String(entry.label).slice(0, 80),
+          botId: typeof entry.botId === 'string' ? entry.botId : null,
+          waiting: entry.waiting === true,
+        }
+      }).filter(entry => entry !== undefined),
+      labels: {
+        stop: typeof labels.stop === 'string' ? String(labels.stop).slice(0, 30) : undefined,
+        stopAll: typeof labels.stopAll === 'string' ? String(labels.stopAll).slice(0, 30) : undefined,
+        letGo: typeof labels.letGo === 'string' ? String(labels.letGo).slice(0, 30) : undefined,
+      },
+    }
   }
   const handoffOf = (value) => {
     if (value === null || typeof value !== 'object') return undefined
@@ -85,7 +140,7 @@ if (startPage !== undefined) {
       if (fullscreen) root.dataset.fullscreen = 'true'
       else delete root.dataset.fullscreen
     })
-    loaded(() => { frameless(caption.slice('--ds-bot-caption='.length), process.argv.includes('--ds-bot-mica')) })
+    loaded(() => { frameless(caption.slice('--ds-bot-caption='.length), argument('ds-bot-material')) })
   }
 }
 
@@ -600,14 +655,15 @@ function updatesBridge() {
   }
 }
 
-function frameless(height, mica) {
+function frameless(height, material) {
   const root = document.documentElement
   root.dataset.windowsTitlebar = ''
   root.style.setProperty('--dsh-windows-titlebar-height', `${height}px`)
   // DSH keeps the dialog mask off the caption band, which then stays bright above a dimmed
   // page; here the band is part of the page, so the mask covers it too.
   root.style.setProperty('--dsh-frame-chrome-top', '0px')
-  captionColors(mica)
+  // The traffic lights take their colors from the system.
+  if (process.platform === 'win32') captionColors(material === 'mica')
 }
 
 // The caption buttons stand on the rightmost open column with Mica (the right sidebar or the

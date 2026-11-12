@@ -588,7 +588,7 @@ export function install(rt) {
     home: rt.home,
     config: config ?? {},
     handle: (endpoint, payload, signal) => rt.handle(endpoint, payload, signal),
-    subscribeFeed: subscriber => rt.subscribeFeed(subscriber),
+    subscribeFeed: subscriber => rt.feedTap(subscriber),
     readOnly: () => rt.readOnly?.(),
     logger: ctx.logger ?? console,
   })

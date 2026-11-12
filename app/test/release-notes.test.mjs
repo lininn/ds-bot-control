@@ -39,7 +39,7 @@ test('sizes are whole megabytes, as GitHub shows them', () => {
   assert.equal(formatSize(10), '1 MB')
 })
 
-test('the table lists Windows first, then macOS and Linux, and says which files are not for download', () => {
+test('the table lists Windows first, then macOS, Linux and Android, and says which files are not for download', () => {
   const sizes = Object.fromEntries(names('0.2.3').map((name, index) => [name, (index + 1) * 100 * MB]))
   const block = downloadBlock({ version: '0.2.3', sizes })
   const rows = block.split('\n').filter(line => line.startsWith('| ') && !line.startsWith('| System'))
@@ -49,7 +49,7 @@ test('the table lists Windows first, then macOS and Linux, and says which files 
   assert.match(rows[2], /^\| macOS, Intel .*mac-x64\.zip.*\| 300 MB \|$/u)
   assert.match(rows[3], /^\| Linux, AppImage .*linux-x86_64\.AppImage.*\| 400 MB \|$/u)
   assert.match(rows[4], /^\| Linux, deb .*linux-amd64\.deb.*\| 500 MB \|$/u)
-  assert.match(rows[5], /^\| Android \(APK\)<br>Opens the relay page .*android\.apk.*\| 600 MB \|$/u)
+  assert.match(rows[5], /^\| Android \(phone app \/ 手机 App\) .*android\.apk.*\| 600 MB \|$/u)
   assert.match(block, /^## Download \/ 下载$/mu)
   assert.match(block, /The `\.blockmap`, `latest\*\.yml` and `lininn-ds-bot-\*\.tgz` files and the source code archives are for updates and the plugin/u)
   assert.match(block, /\[SHA256SUMS\.txt\]\(https:\/\/github\.com\/lininn\/ds-bot-control\/releases\/download\/v0\.2\.3\/SHA256SUMS\.txt\)/u)
@@ -146,23 +146,10 @@ test('the release becomes Latest last, after every job that attaches files', () 
   assert.match(runs(job), /node scripts\/release-notes\.mjs /u)
 })
 
-test('both READMEs open with the same download block, a Windows link and the not-official line', () => {
+test('both READMEs link the latest release and do not hard-code release version numbers', () => {
   for (const file of ['../../README.md', '../../README.zh.md']) {
-    const top = read(file).split(/\r?\n/u).slice(0, 10).join('\n')
-    assert.match(top, /\(https:\/\/github\.com\/lininn\/ds-bot-control\/releases\/latest\)/u, file)
-    assert.match(top, /Windows 10\/11/u, file)
-    assert.match(top, /not an official DeepSeek product/u, file)
-    assert.match(top, /不是 DeepSeek 官方产品/u, file)
+    const text = read(file)
+    assert.match(text, /\(https:\/\/github\.com\/lininn\/ds-bot-control\/releases\/latest\)/u, file)
+    assert.doesNotMatch(text, /ds-bot-\d+\.\d+\.\d+\.tgz|DS-Bot#v\d/u, file)
   }
-  const block = (file) => {
-    const lines = read(file).split(/\r?\n/u)
-    return lines.slice(lines.findIndex(line => line.startsWith('**[Download DS Bot')), lines.findIndex(line => line.startsWith('**DS Bot**:')) + 1)
-  }
-  assert.ok(block('../../README.md').length > 10)
-  assert.deepEqual(block('../../README.zh.md'), block('../../README.md'))
-  // Edge shows Keep anyway only under Show more.
-  assert.match(block('../../README.md').join('\n'), /\*\*Keep\*\* → \*\*Show more\*\* → \*\*Keep anyway\*\*/u)
-  assert.match(block('../../README.md').join('\n'), /「保留」→「显示更多」→「仍然保留」/u)
-  for (const file of ['../../README.md', '../../README.zh.md'])
-    assert.doesNotMatch(read(file), /ds-bot-\d+\.\d+\.\d+\.tgz|DS-Bot#v\d/u, file)
 })

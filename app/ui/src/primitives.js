@@ -43,3 +43,15 @@ export function MarkdownText({ text, labels, variant }) {
   return h('div', { className: variant === 'compact' ? 'md_markdown md-compact' : 'md_markdown' },
     h(Markdown, { remarkPlugins: plugins, components }, text ?? ''))
 }
+
+// The settings dialog's nav icons. The app has no DSH interface, so a plain square stands in
+// for each: the row still renders and its label says what it opens.
+const NavIcon = ({ size = 16, className }) => h('svg', { className, width: size, height: size, viewBox: '0 0 16 16', 'aria-hidden': true },
+  h('rect', { x: 2.5, y: 2.5, width: 11, height: 11, rx: 2.5, fill: 'none', stroke: 'currentColor', strokeWidth: 1.2 }))
+export const IconUserOutlineMedium = NavIcon
+export const IconAgentPresetOutlineMedium = NavIcon
+export const IconPersonalizationOutlineMedium = NavIcon
+export const IconArchiveOutlineMedium = NavIcon
+export const IconSettingsOutlineMedium = NavIcon
+export const IconDownloadOutlineRegular = NavIcon
+export const IconLoadingOutlineRegular = NavIcon

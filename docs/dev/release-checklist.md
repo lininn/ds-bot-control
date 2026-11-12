@@ -7,7 +7,7 @@ CI 只跑单元测试和 Linux 上的测试台。窗口外框、输入法、高 
 ## 准备
 
 - Windows 10 / 11 x64，或 macOS（Apple 芯片）。
-- 官方的 DSH Desktop，版本和 README 里写的一致（现在是 `0.2.1-rc.2`）。只从 DeepSeek Harness 官方渠道下载。
+- 官方的 DSH Desktop，版本和 README 里写的一致（现在是 `0.2.2-rc.1`）。只从 DeepSeek Harness 官方渠道下载。
 - 要发的包：在 `ds-bot/` 里运行 `npm pack`，得到 `ds-bot-<版本>.tgz`。
 - 桌面应用的安装包：在 `app/` 里运行 `npm run dist`，得到 `app/dist-pack/DS-Bot-<版本>-win-x64.exe`。`app/package.json` 和 `ds-bot/package.json` 的版本号要一样。
 - 也可以用发版工作流的试运行：在 GitHub 的 Actions 里选 Release → Run workflow，勾着 dry run 运行。跑完后在这次运行的页面下载 Windows 安装包和两个 Mac 的 zip（保留 7 天）。它们和 Release 里的文件在同样的 runner 上、用同样的方法打包，不发布任何东西。
@@ -168,3 +168,15 @@ DSH Desktop 和桌面应用各做一遍。
 | 13.4 | 设置 → 通用 →「位置」：把总工作区换到另一个文件夹，给 Bot 发消息；再把数据位置换到一个空文件夹 | 总工作区换完，Bot 的下一轮在新文件夹里；数据复制完 App 自己重启，团队和对话都在，「位置」里是新的数据位置，旧文件夹还在 | |
 | 13.5 | 关闭窗口，再从托盘或 Dock 重新打开；最后从托盘选「退出 DS Bot」 | 第一次关窗提示留在托盘继续运行，确认后窗口隐藏、引擎照常；点 Dock 图标或托盘「打开 DS Bot」窗口回来；托盘「退出 DS Bot」才完全退出 | |
 | 13.6 | 装上一个发布版本的 App 并打开，等新版提示后点「下载」 | 打开这次 Release 的发布页；应用不自己安装新版 | |
+
+## 14. 手机 App（Android）
+
+APK 用上传密钥签名，密钥放在仓库的 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS` 三个 secret 里。以后的每个 APK 都要用同一把密钥，否则 Android 不让覆盖安装。缺 secret 时 Release 的「Phone app (Android)」任务会失败。
+
+| # | 步骤 | 期望 | 结果 |
+|---|---|---|---|
+| 14.1 | 发布 Release，等工作流传完文件 | Release 里有 `DS-Bot-<版本>-android.apk`，下载表里有 Android 一行 | |
+| 14.2 | 在电脑的 DS Bot 里打开 设置 → 手机，打开「手机访问」 | 服务器是 `wss://relay.dsbot.app/v1/link`，状态变成已开 | |
+| 14.3 | 在一台没装过 DS Bot 的 Android 手机上，从 Release 页下载 APK 并安装，打开后用相机扫电脑上的二维码 | 能装上；扫码后配对成功，进入团队 | |
+| 14.4 | 关掉 Wi-Fi，用移动数据给一个 Bot 发消息；打开一张聊天里的照片 | 收到回复；照片先显示预览，点开后显示原图 | |
+| 14.5 | 装着上一个发布版本的 APK 时，装这一版 | 直接覆盖安装，配对还在 | |

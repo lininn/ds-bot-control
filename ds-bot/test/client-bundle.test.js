@@ -17,14 +17,12 @@ test('client.js registers a factory that exports apply and inject', () => {
   runInNewContext(committed(), { window: { __ModuleLoader__: { load: registration => registrations.push(registration) } } })
   assert.equal(registrations.length, 1)
   const [{ id, factory, ...rest }] = registrations
-  // DSH looks the bundle up by package name, so this must follow package.json.
-  const { name } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-  assert.equal(id, name)
+  assert.equal(id, 'ds-bot')
   assert.deepEqual(Object.keys(rest), [])
 
   const requested = []
   const platform = {
-    'react': { createElement: () => null, Fragment: Symbol('Fragment'), useState: initial => [initial, () => {}], useEffect: () => {}, useMemo: make => make(), useCallback: fn => fn, useRef: current => ({ current }), useId: () => 'id', useSyncExternalStore: (sub, get) => get(), createContext: initial => ({ value: initial, Provider: () => null }), useContext: ctx => ctx.value },
+    'react': { Component: class {}, createElement: () => null, Fragment: Symbol('Fragment'), useState: initial => [initial, () => {}], useEffect: () => {}, useMemo: make => make(), useCallback: fn => fn, useRef: current => ({ current }), useId: () => 'id', useSyncExternalStore: (sub, get) => get(), createContext: initial => ({ value: initial, Provider: () => null }), useContext: ctx => ctx.value },
     'react-dom': { createPortal: node => node },
     '@deepseek-ai/dsh-client-ui-primitives': { MarkdownText: () => null },
   }

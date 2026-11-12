@@ -1,7 +1,7 @@
 name: Release
 
 # Publishes ds-bot to npm when a GitHub release is published, then attaches the desktop app's
-# Windows installer, macOS zips and Linux packages to the release. Windows and the Linux
+# Windows installer, macOS zips and Linux packages, and the phone app's Android APK, to the release. Windows and the Linux
 # AppImage update from latest.yml / latest-linux.yml; macOS and the Linux deb open the release
 # page for a manual download.
 #
@@ -81,6 +81,9 @@ jobs:
             exit 1
           fi
 
+      # The tests rebuild link.js from ../link and run its Relay Server, which have their own packages.
+      - name: Install the phone link's packages
+        run: npm ci --no-fund --no-audit --prefix ../link
       - run: npm ci --no-fund --no-audit
       - run: npm run harness
       - run: npm test
@@ -129,6 +132,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci --no-fund --no-audit
+      - run: node scripts/seed-electron-checksums.mjs
       - run: npm run dist
       - name: Check the packaged app
         run: node scripts/check-packed.mjs
@@ -172,6 +176,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci --no-fund --no-audit
+      - run: node scripts/seed-electron-checksums.mjs
       - run: npm run dist
       - name: Check the packaged app
         run: node scripts/check-packed.mjs
@@ -209,6 +214,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci --no-fund --no-audit
+      - run: node scripts/seed-electron-checksums.mjs
       - run: npm run dist
       - name: Check the packaged app
         # Ubuntu 24.04's AppArmor blocks the unprivileged user namespaces that Chromium's
@@ -243,6 +249,10 @@ jobs:
           legacy="$(node scripts/legacy-release-assets.mjs "dist-pack/DS-Bot-$version-linux-amd64.deb")"
           gh release upload "$TAG" "dist-pack/DS-Bot-$version-linux-x86_64.AppImage" "dist-pack/DS-Bot-$version-linux-amd64.deb" "$legacy" dist-pack/latest-linux.yml --clobber
 
+  # The WebView APK that opens the relay page, built from the repository's own android/
+  # project and signed with the upload key in the ANDROID_KEYSTORE_BASE64,
+  # ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS secrets. Every later APK must carry
+  # the same key, or Android refuses it as an update.
   app-android:
     name: Android APK
     needs: publish

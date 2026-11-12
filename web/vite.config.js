@@ -2,13 +2,17 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 
 // The Bot views take DSH's interface primitives from one module; this shell does not load
-// DSH's interface, so app/ui's own module stands in for that one.
+// DSH's interface, so app/ui's own module stands in for that one. Some views (the user's own
+// messages) import the package by name instead of through ./dsh-primitives.js, so both reach
+// the same stand-in; it leaves the primitives it does not draw undefined, and the views skip them.
 const primitives = fileURLToPath(new URL('../app/ui/src/primitives.js', import.meta.url))
+const primitivesPackage = '@deepseek-ai/dsh-client-ui-primitives'
 const ownPrimitives = {
   name: 'ds-bot-primitives',
   enforce: 'pre',
   resolveId(source, importer) {
-    return source === './dsh-primitives.js' && importer?.replaceAll('\\', '/').includes('/ds-bot/src/client/') ? primitives : null
+    if (!importer?.replaceAll('\\', '/').includes('/ds-bot/src/client/')) return null
+    return source === './dsh-primitives.js' || source === primitivesPackage ? primitives : null
   },
 }
 

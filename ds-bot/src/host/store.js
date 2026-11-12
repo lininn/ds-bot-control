@@ -4,11 +4,12 @@
 import { copyFileSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { LEGACY_THEMES, MAX_EXCHANGES, ROOM_MODES, TEXT_KEPT } from './constants.js'
+import { LEGACY_THEMES, MAX_EXCHANGES, ROOM_MODES, SECTION_COLORS, SECTION_NAME_MAX, TEXT_KEPT } from './constants.js'
 import { replaceFile } from './files.js'
 import { homeLock } from './home-lock.js'
 import { backupBeforeMigration, logRetiredSettings } from './migrate.js'
 import { currentColor, headOf, normalize, unquote } from './text.js'
+import { AMBIGUOUS_OLD_ROUTES, legacyRoute } from './local-agents/engines.js'
 
 // A table read that sees only the keys the table holds itself. Ids that come from
 // outside (a request body, a tool argument, a name a model gives) go through this, so
@@ -19,8 +20,8 @@ export const own = (table, key) => (table != null && Object.hasOwn(table, key) ?
 export function install(rt) {
   const { ctx, home, statePath } = rt
 
-  /** @type {{version:1, workspaceId?:string, mainBotIds:string[], bots:Record<string,any>, privateArchives:any[], rooms:Record<string,any>, agents:Record<string,any>, capabilities:{items:Record<string,any>}, exchanges:any[], exchangeTurns:Record<string,number[]>, revision:number}} */
-  const state = { version: 1, mainBotIds: [], bots: {}, privateArchives: [], rooms: {}, agents: {}, capabilities: { items: {} }, exchanges: [], exchangeTurns: {}, works: {}, requests: {}, questions: {}, views: {}, prefs: {}, switching: {}, revision: 0 }
+  /** @type {{version:1, workspaceId?:string, mainBotIds:string[], bots:Record<string,any>, privateArchives:any[], rooms:Record<string,any>, agents:Record<string,any>, sections:any[], capabilities:{items:Record<string,any>}, exchanges:any[], exchangeTurns:Record<string,number[]>, revision:number}} */
+  const state = { version: 1, mainBotIds: [], bots: {}, privateArchives: [], rooms: {}, agents: {}, sections: [], capabilities: { items: {} }, exchanges: [], exchangeTurns: {}, works: {}, requests: {}, questions: {}, views: {}, closedCards: {}, prefs: {}, switching: {}, revision: 0 }
   let loaded = null
   let writing = Promise.resolve()
   const { warn } = rt
@@ -117,6 +118,8 @@ export function install(rt) {
     state.prefs ??= {}
     // Teams saved before the DSH Agent existed carry no `agents`; corrupt values reset.
     if (state.agents === null || typeof state.agents !== 'object' || Array.isArray(state.agents)) state.agents = {}
+    // `computer` is the computer-use switch; absent or corrupt means off.
+    if (state.computer === null || typeof state.computer !== 'object' || Array.isArray(state.computer)) state.computer = {}
     let migrated = !hadCapabilities
     const retired = []
     if (state.capabilities === null || typeof state.capabilities !== 'object' || Array.isArray(state.capabilities)) {
@@ -135,6 +138,9 @@ export function install(rt) {
         bot.color = currentColor(bot.color)
         migrated = true
       }
+      // `bot.computer` holds the computer-use level and Always-grant apps; corrupt values reset.
+      if (bot.computer !== undefined && (bot.computer === null || typeof bot.computer !== 'object' || Array.isArray(bot.computer))) delete bot.computer
+      else if (bot.computer !== undefined && (bot.computer.apps === null || typeof bot.computer.apps !== 'object' || Array.isArray(bot.computer.apps))) delete bot.computer.apps
       // LEGACY: Bots saved with a lab ran on that lab's default model; the model they
       // last ran on becomes their own, so dropping the lab changes nothing for them.
       if ('lab' in bot) {
@@ -143,6 +149,7 @@ export function install(rt) {
         migrated = true
       }
     }
+    if (migrateLocalRoutes(state)) migrated = true
     // A team from before several Main Bots were allowed names a single one.
     if (!Array.isArray(state.mainBotIds)) state.mainBotIds = []
     if ('mainBotId' in state) {
@@ -152,6 +159,24 @@ export function install(rt) {
     }
     state.mainBotIds = state.mainBotIds.filter(id => state.bots[id])
     if (!Array.isArray(state.privateArchives)) state.privateArchives = []
+    if (!Array.isArray(state.sections)) state.sections = []
+    else {
+      const seen = new Set()
+      state.sections = state.sections
+        .filter(sec => sec && typeof sec === 'object' && typeof sec.id === 'string' && sec.id !== '' && typeof sec.name === 'string' && sec.name.trim() !== '' && !seen.has(sec.id) && seen.add(sec.id))
+        .map(sec => ({
+          id: sec.id,
+          name: sec.name.trim().slice(0, SECTION_NAME_MAX),
+          ...(sec.collapsed === true ? { collapsed: true } : {}),
+          ...(SECTION_COLORS.includes(sec.color) ? { color: sec.color } : {}),
+        }))
+    }
+    const sectionIds = new Set(state.sections.map(sec => sec.id))
+    for (const entry of [...Object.values(state.bots), ...Object.values(state.rooms), ...Object.values(state.agents)]) {
+      if (entry.sectionId !== undefined && (typeof entry.sectionId !== 'string' || !sectionIds.has(entry.sectionId) || entry.id === state.mainBotIds[0])) {
+        delete entry.sectionId
+      }
+    }
     // Teams from before the whale was stored at setup: their first Bot, while still a
     // Main Bot, gets it once wherever it has no look of its own. After that the whale is
     // an ordinary look the user can change, and it never passes to another Bot.
@@ -170,7 +195,18 @@ export function install(rt) {
     }
     if (state.works === null || typeof state.works !== 'object' || Array.isArray(state.works)) state.works = {}
     if (state.requests === null || typeof state.requests !== 'object' || Array.isArray(state.requests)) state.requests = {}
+    // Group call batches (groups.js); a batch that is not whole is dropped.
+    if (state.roomBatches === null || typeof state.roomBatches !== 'object' || Array.isArray(state.roomBatches)) state.roomBatches = {}
+    for (const [key, batch] of Object.entries(state.roomBatches)) {
+      if (!Array.isArray(batch?.pending) || !Array.isArray(batch.done) || !Array.isArray(batch.results) || batch.key !== key) delete state.roomBatches[key]
+    }
     if (state.views === null || typeof state.views !== 'object' || Array.isArray(state.views)) state.views = {}
+    if (state.closedCards === null || typeof state.closedCards !== 'object' || Array.isArray(state.closedCards)) state.closedCards = {}
+    // LEGACY: v0.3.2 kept closed dock views here, pinning them above the composer.
+    if ('closedViews' in state) {
+      delete state.closedViews
+      migrated = true
+    }
     // LEGACY: aside cards lived in this file only before the feature shipped;
     // they are kept under btw/ per part now. A saved copy is dropped, not moved.
     if ('btwCards' in state) {
@@ -250,8 +286,10 @@ export function install(rt) {
     if (holder !== undefined) return
     if (migrated && stuck === undefined) {
       // The old settings are recorded before the first write; if the log cannot be
-      // written, the load fails with state.json still as it was.
-      await logRetiredSettings(home, retired)
+      // written, the load fails with state.json still as it was. It is written
+      // synchronously, so the session indexes and scoped tools are still rebuilt in
+      // the same turn as the adoption, before the load first yields.
+      logRetiredSettings(home, retired)
       // A failed write must not poison `loaded`: the migrated state stays in
       // memory and the next save() writes it.
       try {
@@ -395,7 +433,9 @@ export function install(rt) {
         await replaceFile(temp, statePath, ensureLock)
         seen = stamp()
         rt.capabilitiesStateSaved?.()
-        rt.stateSaved?.()
+        for (const listener of savedListeners) {
+          try { listener() } catch (error) { warn('ds-bot: saved listener failed: %s', error) }
+        }
       } catch (error) {
         await unlink(temp).catch(() => {})
         throw error
@@ -443,6 +483,30 @@ export function install(rt) {
   const pastOwners = new Map()
   const chatOf = botId => botOf(botId)?.sessionId ?? botId
   const sessionOfRoom = room => (room === undefined ? undefined : room.sessionId ?? room.id)
+  // DSH turns away every step of an archived Session and every task aimed at it, so a
+  // Session the team speaks from now leaves the archive: an earlier open of an old part
+  // could leave one there, and DSH's own Session list can archive one. Earlier parts
+  // stay archived.
+  let restoring
+  const restoreCurrent = () => {
+    const registry = ctx.workspaceRegistry
+    if (restoring !== undefined || readOnly() !== undefined || typeof registry?.unarchiveSession !== 'function') return
+    let archived
+    try {
+      archived = new Set(registry.archivedSessionIds ?? [])
+    } catch {
+      return
+    }
+    const held = [...chatOwners.keys(), ...groupOwners.keys(), ...roomOwners.keys()].filter(id => archived.has(id))
+    if (held.length === 0) return
+    restoring = (async () => {
+      for (const sessionId of held) {
+        await registry.unarchiveSession(sessionId)
+          .then(() => warn('ds-bot: current Session %s was archived in DSH; taken back out', sessionId))
+          .catch(error => warn('ds-bot: current Session %s is archived in DSH and could not be taken out: %s', sessionId, error))
+      }
+    })().finally(() => { restoring = undefined })
+  }
   const indexSessions = () => {
     chatOwners.clear()
     groupOwners.clear()
@@ -466,6 +530,7 @@ export function install(rt) {
     // live Agents that joined); both install after this.
     rt.indexAgents?.()
     rt.syncScopedTools?.()
+    restoreCurrent()
   }
   // The Bot a Session speaks for: its own chat, one of its group Sessions, or an
   // earlier segment of either.
@@ -514,10 +579,70 @@ export function install(rt) {
   }
   const isAdminOf = (room, id) => id !== undefined && room.admin === id
 
+  const savedListeners = new Set()
+  const onSaved = (listener) => {
+    savedListeners.add(listener)
+    return () => savedListeners.delete(listener)
+  }
+
+  // A question or view card closed without an answer on the card (dismissed, or
+  // answered by a message) stays in the chat, read-only: by the Session where it
+  // was asked, its call id and how it closed. A card answered on the card shows
+  // on its reply message.
+  const closeCard = (sessionId, card, outcome) => {
+    if (typeof card?.callId !== 'string') return
+    const target = typeof card.callSessionId === 'string' ? card.callSessionId : sessionId
+    state.closedCards[target] = { ...own(state.closedCards, target), [card.callId]: outcome }
+  }
+
   Object.assign(rt, {
-    state, load, save, refresh, readOnly, own,
+    state, load, save, refresh, readOnly, own, onSaved, closeCard,
     botOf, roomOf, isMain, chatOf, sessionOfRoom, selfOf, isBotSession,
     chatOwners, groupOwners, roomOwners, pastOwners,
     groupSessionsOf, dropGroupSession, retireGroupSession, findBot, findRooms, isAdminOf,
   })
+}
+
+// LEGACY: local-agent routes moved under the `local-` prefix (see engines.js).
+// The CLI records and each Bot's model follow. The applied model is dropped, so
+// the Bot's Sessions are selected again on the new route. An old `opencode/...`
+// ref is also DSH's own OpenCode provider: it moves only for a Bot that ran on
+// the local CLI (a CLI record for one of its Sessions) or on its "CLI default".
+// Returns whether anything changed.
+export function migrateLocalRoutes(state) {
+  let changed = false
+  const ranOn = new Map() // old route -> Session ids the CLI served
+  for (const [sessionId, record] of Object.entries(state.localAgents?.sessions ?? {})) {
+    const next = legacyRoute(record?.route)
+    if (next === undefined) continue
+    if (!ranOn.has(record.route)) ranOn.set(record.route, new Set())
+    ranOn.get(record.route).add(sessionId)
+    record.route = next
+    changed = true
+  }
+  const split = (ref) => {
+    const at = typeof ref === 'string' ? ref.indexOf('/') : -1
+    return at <= 0 ? undefined : { provider: ref.slice(0, at), model: ref.slice(at + 1) }
+  }
+  const sessionsOf = (bot) => {
+    const ids = [bot.id, bot.sessionId, ...(bot.segments ?? []).map(segment => segment?.sessionId)]
+    for (const room of Object.values(state.rooms ?? {})) {
+      ids.push(room?.sessions?.[bot.id], ...(room?.segments?.[bot.id] ?? []).map(segment => segment?.sessionId))
+    }
+    return ids.filter(Boolean)
+  }
+  for (const bot of Object.values(state.bots ?? {})) {
+    for (const key of ['model', 'appliedModel']) {
+      const ref = split(bot[key])
+      const next = legacyRoute(ref?.provider)
+      if (next === undefined) continue
+      const local = !AMBIGUOUS_OLD_ROUTES.has(ref.provider) || ref.model === 'default'
+        || sessionsOf(bot).some(id => ranOn.get(ref.provider)?.has(id))
+      if (!local) continue
+      if (key === 'model' || bot.model === undefined) bot.model = `${next}/${ref.model}`
+      delete bot.appliedModel
+      changed = true
+    }
+  }
+  return changed
 }

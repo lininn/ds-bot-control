@@ -35,11 +35,11 @@ Installing another version of DS Bot does not help.
 **What to do:** the profile folder is `~/.dsh/profiles/web/` (Windows: `C:\Users\<user>\.dsh\profiles\web\`), or `profiles/web/` in `DSH_HOME` when it is set. For Desktop, use `profiles/desktop/` instead.
 
 1. Quit DSH.
-2. Open `cordis.patch.yml` in the profile folder. Look for a row with `id: bot` that has no `name: ds-bot` line, and remove that row. Keep a copy of the file first.
-3. Check that `package.json` in the same folder lists `@lininn/ds-bot` under `dependencies`. If it does not, add DS Bot again: `npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add @lininn/ds-bot`.
+2. Open `cordis.patch.yml` in the profile folder. Look for a row with `id: bot` that has no `name: @lininn/ds-bot` line, and remove that row. Keep a copy of the file first.
+3. Check that `package.json` in the same folder lists `@lininn/ds-bot` under `dependencies`. If it does not, add DS Bot again: `npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add @lininn/ds-bot`.
 4. Start DSH again.
 
-To see where the row comes from, run `npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web --dump-config`. It prints every plugin row with the file that supplied it. If you report the problem, copy only the rows with `id: bot` and the file names; leave out keys and paths you do not want to share.
+To see where the row comes from, run `npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web --dump-config`. It prints every plugin row with the file that supplied it. If you report the problem, copy only the rows with `id: bot` and the file names; leave out keys and paths you do not want to share.
 
 Deleting the whole profile folder also fixes it, but it removes the profile's other plugins and its settings, such as models. The Bot team is in `~/.dsh/bot/` and is not affected either way.
 
@@ -73,7 +73,7 @@ The error code is `WEB_PROVIDER_CONFIGURED_MISSING`.
 
 3. Start DSH again.
 
-To check the result, run `npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web --dump-config` and look at the `web` row. Another plugin can also set the search provider while DSH runs, after the profile patch. If you turn such a plugin off later, check this setting again.
+To check the result, run `npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web --dump-config` and look at the `web` row. Another plugin can also set the search provider while DSH runs, after the profile patch. If you turn such a plugin off later, check this setting again.
 
 See also [Web search](../ds-bot/README.md#web-search) in the plugin README and issue [#128](https://github.com/Fei2411/DS-Bot/issues/128).
 

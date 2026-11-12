@@ -16,7 +16,7 @@ const { JSDOM } = createRequire(join(process.env.DSH_HARNESS ?? join(PLUGIN, '..
 // fixtures retain refs across commits and run their layout effects after each render.
 const { outputFiles } = await build({
   stdin: {
-    contents: "export { SHELL_CSS } from './src/client/styles.js'\nexport { SIDEBAR_CSS, TeamSidebar } from './src/client/sidebar.js'",
+    contents: "export { SHELL_CSS } from './src/client/styles.js'\nexport { SIDEBAR_CSS, TeamSidebar, PluginsButton } from './src/client/sidebar.js'",
     resolveDir: PLUGIN,
   },
   bundle: true, format: 'cjs', platform: 'browser', write: false, logLevel: 'silent',
@@ -42,7 +42,7 @@ const sandbox = {
   window: viewport,
 }
 runInNewContext(outputFiles[0].text, sandbox)
-const { SHELL_CSS, SIDEBAR_CSS, TeamSidebar } = module.exports
+const { SHELL_CSS, SIDEBAR_CSS, TeamSidebar, PluginsButton } = module.exports
 
 function navigationSidebar(wide, { leftDrawer = false } = {}) {
   const calls = []
@@ -334,11 +334,34 @@ test('what the team view replaces in the shell sidebar stays out of sight', () =
   }
 })
 
-// The shell's collapsed sidebar keeps no track in the Bot view, so a hidden
-// column leaves nothing behind; the shell's right column keeps its own geometry.
-test('the shell\'s collapsed sidebar keeps no track while its right column is closed', () => {
-  const frame = [...rulesOf(SHELL_CSS), ...rulesOf(SIDEBAR_CSS)].find(rule => rule.selector.includes('[data-sidebar-collapsed][data-rightbar-collapsed]'))
-  assert.match(frame?.body ?? '', /grid-template-columns:0px/)
+function collapsedGridRules() {
+  const { document } = new JSDOM('<style></style>').window
+  document.querySelector('style').textContent = `${SHELL_CSS}\n${SIDEBAR_CSS}`
+  const frames = []
+  const visit = (rules, media = []) => {
+    for (const rule of rules) {
+      if (rule.selectorText?.includes('[data-sidebar-collapsed][data-rightbar-collapsed]'))
+        frames.push({ grid: rule.style.getPropertyValue('grid-template-columns'), media })
+      if (rule.cssRules?.length)
+        visit(rule.cssRules, rule.media ? [...media, rule.media.mediaText] : media)
+    }
+  }
+  visit(document.styleSheets[0].cssRules)
+  return frames
+}
+
+test('the wide shell\'s collapsed sidebar keeps no track while its right column is closed', () => {
+  const frames = collapsedGridRules()
+  assert.equal(frames.length, 1)
+  assert.match(frames[0].grid, /^0px\s+minmax\(0,\s*1fr\)\s+0px$/)
+})
+
+// A narrow host may place the conversation in its first track instead of its second.
+test('the collapsed shell grid override leaves layouts below 1024px to the host', () => {
+  const frames = collapsedGridRules()
+  assert.equal(frames.length, 1)
+  assert.ok(frames[0].media.some(query => /^\(min-width:\s*1024px\)$/.test(query)),
+    'the zero-width first track must not override a narrow host layout')
 })
 
 test('the column\'s top row hides it, on the rail too, and its edge is a drag grip', () => {
@@ -443,9 +466,27 @@ test('the rail spaces its icons on the open column\'s rhythm', () => {
   assert.match(bodyOf('.bt-rail'), /(^|;)gap:6px/)
 })
 
-// #452: the Connect plugins button left the footer; what DS Bot puts there is
-// the account menu and the way back from Agent mode.
-test('the Bot footer holds the account and the return button only', () => {
+// The Plugins shortcut calls DSH's plugin page; a host without that navigation
+// face has no page to open, so the button stays out of the foot entirely.
+test('the Plugins shortcut stays out where the host has no plugin navigation', () => {
+  assert.equal(PluginsButton({ actions: {} }), null)
+  assert.equal(PluginsButton({ actions: { hasPlugins: () => false, openPlugins: () => { throw new Error('must not open') } } }), null)
+})
+
+test('the Plugins shortcut opens the plugin manager and names itself', () => {
+  const calls = []
+  const button = PluginsButton({ actions: { hasPlugins: () => true, openPlugins: () => calls.push('open') } })
+  assert.equal(button.type, 'button')
+  assert.equal(button.props['aria-label'], 'Plugins')
+  assert.equal(button.props.title, 'Plugins')
+  button.props.onClick()
+  assert.deepEqual(calls, ['open'])
+})
+
+// The foot of the team column is the sidebar's own `.bt-leftcol-foot`, not the
+// shell's footArea: only the account menu and the Agent-mode return button go
+// through the shell's action slot.
+test('the shell footer action slot holds the account and the return button only', () => {
   const source = readFileSync(new URL('../src/client/index.js', import.meta.url), 'utf8')
   const ids = [...source.matchAll(/shadow\('sidebar\.footer\.action',\s*\{[^}]*?id:\s*['"]([^'"]+)['"]/g)].map(match => match[1])
   assert.deepEqual(ids.sort(), ['bot-account', 'bot-return'])
@@ -548,3 +589,24 @@ test('after a snap the spring stops and the drag follows the cursor', async () =
     assert.equal(column.style.width, '330px')
   })
 })
+
+test('TeamSidebar subscribes to specific ui slices rather than the whole ui object', () => {
+  const selectors = []
+  const base = { unread: {}, leftDrawer: false, details: null, view: 'details', panelYield: false, bootFailed: false }
+  TeamSidebar({
+    wide: true,
+    useRoster: pick => pick({ bots: [], rooms: [], agents: [], byId: {}, ready: true }),
+    useUi: (pick) => { selectors.push(pick); return pick(base) },
+    useRegistry: pick => pick({}),
+    useSessions: pick => pick({ ids: [], byId: {} }),
+    useUpdate: () => ({}),
+    actions: { toggleSidebar() {} },
+  })
+  assert.ok(selectors.length > 0)
+  for (const pick of selectors) {
+    const before = pick(base)
+    const after = pick({ ...base, palette: { query: 'test', token: 1 }, settings: { page: 'general' }, menu: { kind: 'bot', id: 'b1' }, toast: { text: 'err' } })
+    assert.equal(Object.is(before, after), true)
+  }
+})
+

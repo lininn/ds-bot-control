@@ -9,19 +9,22 @@ import { colorOf, toolState, BotMark, RoomAvatar } from './mark.js'
 import { CellEmpty } from './cell-empty.js'
 import { sendsOnEnter } from './enter-key.js'
 import { SettledQuestion, PendingQuestion } from './questions.js'
-import { AnsweredReply, WidgetCell } from './widget-cell.js'
+import { AnsweredReply, ClosedView, WidgetCell } from './widget-cell.js'
 import { SecretToolCell } from './secret-card.js'
+import { ConnectorToolCell, MailToolCell } from './connectors.js'
 import { HandoffCall } from './handoff-card.js'
+import { AppAccessCall, ComputerCallRow, ComputerHandoffCall } from './computer.js'
 import { t } from './i18n.js'
 import { call } from './api.js'
 import { failureLabel } from './diagnostics.js'
-import { turnReasoning, thinkingStep, opensReply } from './turn-reasoning.js'
-import { parseReplies, stackReplies } from '../shared/group-replies.js'
+import { turnReasoning, thinkingStep, opensReply, stepActivity } from './turn-reasoning.js'
+import { parseReplies, relayRange, stackReplies } from '../shared/group-replies.js'
 import { FOLD_AT, FOLD_HUGE, stripLongNote, useFold } from './fold.js'
 import { noHover, useViewport, viewBottom } from './motion.js'
 import { heldCardKey } from './sources.js'
 import { BtwCardView } from './btw.js'
 import { partIndexOf, withBtwRows } from './btw-model.js'
+import { ViaTag } from './user-message.js'
 import { layoutOf, thinkingShown } from './themes.js'
 
 export { clockLabel }
@@ -65,11 +68,18 @@ export function Bubbles({ texts, roster, selfId, actions, streaming, sessionId, 
 // theirs is intercepted or cloned.
 function FoldCodeCopy({ code, actions }) {
   const [copied, setCopied] = useState(false)
-  const copy = () => {
-    void writeClipboard(code).then((ok) => {
-      if (!ok) { actions?.reportError?.(new Error('Could not copy the code block'), 'copy'); return }
+  const copy = async () => {
+    try {
+      if (typeof code === 'function' && typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        // Safari needs the clipboard write inside the click, before the attachment loads.
+        const text = Promise.resolve().then(code).then(value => new Blob([value], { type: 'text/plain' }))
+        await navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })])
+      } else {
+        const text = typeof code === 'function' ? await code() : code
+        if (!await writeClipboard(text)) throw new Error('Could not copy the code block')
+      }
       setCopied(true); setTimeout(() => setCopied(false), 1000)
-    }, () => actions?.reportError?.(new Error('Could not copy the code block'), 'copy'))
+    } catch (error) { actions?.reportError?.(error, 'copy') }
   }
   return h('button', { type: 'button', className: 'bt-tool bt-fold-copy', 'aria-label': copied ? t('Copied') : t('Copy'), title: copied ? t('Copied') : t('Copy'), onClick: copy }, copied ? h(CheckIcon) : h(CopyIcon))
 }
@@ -272,7 +282,8 @@ export function AssistantCell({ node, groupPart, sessionId, openFile, fileMentio
   // DSH 0.2; the step that answers it shows the event line where it was read,
   // once, in the step's first cell.
   const relays = relayPart(data, groupPart) ? relaysBefore(contexts, steps, data) : []
-  if (texts.length === 0 && !reasoning && relays.length === 0) return h(CellEmpty)
+  const activity = groupPart === 'response' ? [] : stepActivity(data)
+  if (texts.length === 0 && !reasoning && relays.length === 0 && activity.length === 0) return h(CellEmpty)
   const selfId = roster.byId[sessionId]?.id ?? sessionId
   // The flat layout heads a reply with who speaks, once per Turn: in the step that opens
   // it, in that step's reasoning part when the reasoning shows there.
@@ -292,6 +303,7 @@ export function AssistantCell({ node, groupPart, sessionId, openFile, fileMentio
       })
     }),
     head ? h(SpeakerHead, { bot: speaker, time: data.time }) : null,
+    activity.length ? h('div', { className: 'bt-agent-activity' }, activity.map((line, index) => h('div', { key: index, className: 'bt-agent-act', title: line }, h('span', { className: 'bt-agent-act-mark', 'aria-hidden': true }), h('span', { className: 'bt-agent-act-text' }, activityParts(line))))) : null,
     reasoning ? h(ThinkingRow, {
       text: reasoning, live: thinking !== undefined, viewKey: `${sessionId}:${data.turn}`,
       // The live clock counts the settled steps too: backing `at` by the settled
@@ -300,6 +312,9 @@ export function AssistantCell({ node, groupPart, sessionId, openFile, fileMentio
     }) : null,
     texts.length ? h(Bubbles, { texts, roster, selfId, actions, streaming: running, sessionId, msgKey: `${sessionId}:${data.turn}:${node.key ?? data.seq ?? ''}`, useUi, mentions, fold: FOLD_HUGE, time: speaker === undefined ? data.time : undefined }) : null)
 }
+
+// `code` in an activity line is the command or path the agent works on.
+const activityParts = line => line.split('`').map((part, index) => (index % 2 === 1 ? h('code', { key: index }, part) : part))
 
 function EventLine({ prefix, bots, joiner = t('and'), onOpen, whole = false }) {
   if (whole && bots.length === 1) {
@@ -471,7 +486,8 @@ function EarlierUser({ row, actions }) {
   return h('div', { className: 'bt-urow' }, h('div', { className: 'bt-ububble', 'data-folded': folded || undefined },
     control ? h('div', { className: 'bt-fold-body' }, area) : area,
     control,
-    row.images ? h('span', { className: 'bt-uimages' }, row.images === 1 ? t('1 image') : t('{count} images', { count: row.images })) : null))
+    row.images ? h('span', { className: 'bt-uimages' }, row.images === 1 ? t('1 image') : t('{count} images', { count: row.images })) : null),
+    row.via ? h('div', { className: 'bt-utime' }, h(ViaTag, { via: row.via }), Number.isFinite(row.time) ? messageClock(row.time) : null) : null)
 }
 
 // The earlier parts of a Bot's own chat, above its current part as one conversation.
@@ -517,13 +533,14 @@ function EarlierParts({ sessionId, roster, actions }) {
       setView(current => ({ ...current, loading: false, failed: true }))
     })
   }
+  const closedEarlier = JSON.stringify((roster.byId[sessionId]?.parts ?? []).map(part => roster.closedCards?.[part] ?? null))
   useEffect(() => {
     generation.current += 1
     busy.current = false
     setView({ pages: [], cursor: undefined, loading: true, failed: false, startedAt: null })
     load(undefined)
     return () => { generation.current += 1 }
-  }, [sessionId])
+  }, [sessionId, closedEarlier])
   useLayoutEffect(() => {
     const pending = restore.current
     restore.current = null
@@ -588,6 +605,10 @@ function chatRow(row, key, { sessionId, selfId, roster, actions, useUi, onBtwDel
     case 'divider': return h(PartLine, { key, time: row.time })
     case 'user': return h(EarlierUser, { key, row, actions })
     case 'answer': return h(AnsweredReply, { key, node: { data: row } })
+    // A question or view card closed without an answer on it.
+    case 'closed': return row.view === undefined
+      ? h('div', { key, className: 'bt-q-inline' }, h(SettledQuestion, { question: row.question, closed: row.closed }))
+      : h(ClosedView, { key, title: row.title, view: row.view, closed: row.closed })
     // A display-only view replays from the blueprint the host kept on the call.
     case 'view': return h(WidgetCell, { key, sessionId, callId: row.callId, args: { text: name => name === 'title' ? row.title : undefined, value: name => name === 'view' ? row.view : undefined }, done: true, isError: false, roster, actions })
     case 'bot': {
@@ -835,6 +856,7 @@ export const PHRASES = {
   working: ['On it', 'Busy with it', 'Moving ahead', 'Taking care of it', 'Making headway'],
 }
 const TOOL_PHRASES = [
+  [/^cua(_driver_native__|$)|^computer_/, 'Using the computer'],
   [/web_?search|search_?web/i, 'Searching online'],
   [/fetch|browse|browser|web/i, 'Reading a page'],
   [/shell|bash|pwsh|powershell|exec|command|terminal/i, 'Running shell commands'],
@@ -906,7 +928,7 @@ function useLiveNote(actions, sessionId, id, entry) {
 function RelayEvent({ reply, bot, sessionId, actions }) {
   if (reply.kind === 'failed') {
     return h('div', { className: 'bt-event bt-event-error', role: 'status', title: [reply.code, reply.status, reply.text].filter(Boolean).join(' · ') },
-      t('{name} could not answer: {reason}', { name: bot.name, reason: failureLabel(reply.code, reply.text) }))
+      t('{name} stopped: {reason}. Switch its model or ask it to go on.', { name: bot.name, reason: failureLabel(reply.code, reply.text) }))
   }
   if (reply.kind === 'lookup') {
     return h('div', { className: 'bt-event' },
@@ -949,6 +971,9 @@ function RelayEvent({ reply, bot, sessionId, actions }) {
   return null
 }
 
+// Rows a later call closed do not change: each is read from the group's book once per page.
+const settledRows = new Map()
+
 function GroupReplies({ sessionId, callId, done, content, roster, actions, useUi, useWork }) {
   const [live, setLive] = useState({ replies: [], speaking: [] })
   useEffect(() => {
@@ -967,16 +992,49 @@ function GroupReplies({ sessionId, callId, done, content, roster, actions, useUi
     void tick()
     return () => { stop = true; clearTimeout(timer) }
   }, [done, sessionId, callId])
+  // A settled round names where its rows are in the group's book; one from before
+  // the ledger carries them in its result.
+  const resultText = done ? contentText(content) : ''
+  const range = done ? relayRange(resultText) : undefined
+  const rowsKey = range === undefined ? undefined : `${sessionId}:${range.from}:${range.to ?? ''}:${range.anchor ?? ''}`
+  const [view, setView] = useState(() => (rowsKey === undefined ? null : settledRows.get(rowsKey) ?? null))
+  // An open cell that is quiet is read again when the team changes, not on a clock.
+  const quietKey = view?.open === true && view.active !== true ? roster.revision : undefined
+  useEffect(() => {
+    if (rowsKey === undefined) return undefined
+    const known = settledRows.get(rowsKey)
+    if (known !== undefined) { setView(known); return undefined }
+    // The newest call's rows grow while the group works: they are read every second then,
+    // and once when the group is quiet, until the next call closes them.
+    let stop = false
+    let timer
+    let seen = ''
+    const tick = async () => {
+      const next = await actions.groupRows(sessionId, range.from, range.to, range.anchor)
+      if (stop) return
+      if (next !== null && Array.isArray(next?.rows)) {
+        if (!next.open) settledRows.set(rowsKey, next)
+        const key = JSON.stringify(next)
+        if (key !== seen) { seen = key; setView(next) }
+        if (!next.open || next.active !== true) return
+      }
+      timer = setTimeout(tick, document.hidden ? 5000 : 1000)
+    }
+    void tick()
+    return () => { stop = true; clearTimeout(timer) }
+  }, [rowsKey, quietKey])
   let replies = live.replies
   let broken = false
-  if (done) {
-    const parsed = parseReplies(contentText(content))
+  if (range !== undefined) {
+    replies = view?.rows ?? live.replies
+  } else if (done) {
+    const parsed = parseReplies(resultText)
     replies = parsed.replies.length ? parsed.replies : live.replies
     broken = parsed.broken
   }
   // Every member answering in the round is typing; what each is doing comes as text,
   // so the cell redraws only when that changes.
-  const pending = done ? [] : live.speaking
+  const pending = range !== undefined ? (view?.open ? view.speaking ?? [] : []) : done ? [] : live.speaking
   const doing = JSON.parse(useWork?.(work => JSON.stringify(pending.map((id) => {
     const tool = work.bots?.[id]?.tool
     return tool ? [tool, workPhrase(work.bots[id])] : []
@@ -993,7 +1051,7 @@ function GroupReplies({ sessionId, callId, done, content, roster, actions, useUi
       if (reply.kind === 'user') {
         return h('div', { key: `user-${index}`, className: 'bt-urow' },
           h('div', { className: 'bt-ububble' }, h(MarkdownText, { text: reply.text, labels: mdLabels(), variant: 'compact' })),
-          Number.isFinite(time) ? h('div', { className: 'bt-utime', title: clockLabel(time) }, messageClock(time)) : null)
+          (reply.via !== undefined || Number.isFinite(time)) ? h('div', { className: 'bt-utime', title: clockLabel(time) }, ...(reply.via !== undefined ? [h(ViaTag, { key: 'via', via: reply.via })] : []), Number.isFinite(time) ? messageClock(time) : null) : null)
       }
       if (reply.kind !== undefined) {
         return h(RelayEvent, { key: `${reply.botId ?? reply.kind}-${index}`, reply, bot, sessionId, actions })
@@ -1016,9 +1074,10 @@ function GroupReplies({ sessionId, callId, done, content, roster, actions, useUi
 
 // The calls ToolCell draws. A PTC program (`run_code`) dispatches the real tools as
 // its sub-calls, so a call draws by its own name wherever it sits in the tree.
-const DRAWN = new Set(['message_bot', 'stop_bot', 'create_bot', 'update_bot', 'group_relay', 'create_group', 'update_group', 'delete_group', 'post_to_group', 'ask_user', 'request_secret', 'ask_user_question', 'show_view', 'browser_handoff', 'read_group_chat', 'remember', 'forget'])
+const isComputerCall = name => name === 'cua' || name?.startsWith('cua_driver_native__') === true
+const DRAWN = new Set(['message_bot', 'stop_bot', 'create_bot', 'update_bot', 'group_relay', 'create_group', 'update_group', 'delete_group', 'post_to_group', 'ask_user', 'request_secret', 'request_connector', 'mail_send', 'ask_user_question', 'show_view', 'browser_handoff', 'read_group_chat', 'remember', 'forget'])
 // Calls whose card a dock above the composer carries when the call is not drawn.
-const CARDS = new Set(['ask_user', 'request_secret', 'show_view', 'browser_handoff'])
+const CARDS = new Set(['ask_user', 'request_secret', 'request_connector', 'mail_send', 'show_view', 'browser_handoff', 'computer_handoff'])
 
 // The root and its sub-calls in dispatch order, each call once.
 export function callTree(root) {
@@ -1095,8 +1154,14 @@ function renderCall(call, { sessionId, roster, actions, useUi, useWork, findBot,
     }
     case 'ask_user': {
       const question = roster.questions?.[sessionId]
-      // Answered or closed: the card leaves no gap where it was.
-      if (!question || question.callId !== call.callId) return h(CellEmpty, { className: 'bt-q-gone' })
+      if (!question || (question.callSessionId ?? sessionId) !== sessionId || question.callId !== call.callId) {
+        // Dismissed or answered by a message: the card stays here, read-only.
+        // Answered on the card: its reply message carries it, so no gap here.
+        const closed = roster.closedCards?.[sessionId]?.[call.callId]
+        if (closed === undefined) return h(CellEmpty, { className: 'bt-q-gone' })
+        const asked = { question: arg('question') ?? '', detail: arg('detail'), options: argValue('options') ?? [], multiSelect: argValue('multiSelect') === true }
+        return h('div', { className: 'bt-q-inline' }, h(SettledQuestion, { question: asked, closed }))
+      }
       if (heldCards?.[heldCardKey('question', question.id)] > 0) return h(CellEmpty)
       return h(PendingQuestion, { key: JSON.stringify([sessionId, question.id]), sessionId, question, actions, inline: true, enterToSend: sendsOnEnter(roster.prefs) })
     }
@@ -1104,8 +1169,14 @@ function renderCall(call, { sessionId, roster, actions, useUi, useWork, findBot,
       return h(WidgetCell, { sessionId, callId: call.callId, args: { text: arg, value: argValue }, done, isError: call.isError, roster, actions, heldCards })
     case 'request_secret':
       return h(SecretToolCell, { sessionId, callId: call.callId, name: arg('name'), done, content: call.content, roster, actions, heldCards })
+    case 'request_connector':
+      return h(ConnectorToolCell, { sessionId, callId: call.callId, done, content: call.content, roster, actions, heldCards })
+    case 'mail_send':
+      return h(MailToolCell, { sessionId, callId: call.callId, done, content: call.content, roster, actions, heldCards })
     case 'browser_handoff':
       return h(HandoffCall, { sessionId, callId: call.callId, roster, actions, heldCards, hooks })
+    case 'computer_handoff':
+      return h(ComputerHandoffCall, { sessionId, callId: call.callId, roster, actions, heldCards, hooks })
     case 'ask_user_question': {
       if (!done) return h(CellEmpty)
       let parsed = null
@@ -1124,26 +1195,36 @@ function renderCall(call, { sessionId, roster, actions, useUi, useWork, findBot,
     case 'forget':
       return done ? h(MemoryEvent, { sessionId, scope: arg('scope'), tool, result: contentText(call.content), failed: call.isError === true, code: call.error?.code, roster, actions, findBot }) : h(CellEmpty)
     default:
+      if (isComputerCall(tool)) {
+        return h(Fragment, null,
+          h(ComputerCallRow, { sessionId, call, roster, actions, hooks }),
+          h(AppAccessCall, { sessionId, callId: call.callId, roster, actions, heldCards, hooks }))
+      }
       return h(CellEmpty)
   }
 }
 
-export function ToolCell({ node, sessionId, useRoster, useUi, useWork, useHeldCards, useBrowserHolds, useBrowserTabs, useBrowserPages, actions }) {
+export function ToolCell({ node, sessionId, useRoster, useUi, useWork, useHeldCards, useBrowserHolds, useBrowserTabs, useBrowserPages, useComputer, actions }) {
   const roster = useRoster(value => value)
   const heldCards = useHeldCards?.(state => state[sessionId])
   const root = node.data.root
   const turn = node.location?.turn?.turn ?? root.turn
   const hidden = isHiddenTurn(roster, sessionId, turn)
   const findBot = nameOrId => roster.byId[nameOrId] ?? roster.bots.find(bot => bot.name.toLowerCase() === String(nameOrId ?? '').toLowerCase())
-  const calls = hidden ? [] : callTree(root)
-  const drawn = calls.filter(call => DRAWN.has(toolName(call)))
+  const closed = roster.closedCards?.[sessionId]
+  // Hidden Bot-to-Bot turns keep their own calls out of the chat, except a question
+  // or view card the user dismissed or answered by message, which settles here.
+  const calls = hidden
+    ? callTree(root).filter(call => (toolName(call) === 'ask_user' || toolName(call) === 'show_view') && call.callId && closed?.[call.callId] !== undefined)
+    : callTree(root)
+  const drawn = calls.filter(call => DRAWN.has(toolName(call)) || isComputerCall(toolName(call)))
   // The newest call still running names the work, so a program reads as the tool it is in.
   const running = root.kind === 'tool-result' ? undefined : calls.findLast(call => call.kind !== 'tool-result')
   const note = running ? toolActivity(toolName(running), toolArgs(running).text, findBot, roster.byId[sessionId]) : null
   // A running tool shows only as the activity row's phrase.
   useLiveNote(actions, sessionId, `tool:${root.callId ?? node.key}`, note)
-  useShownCards(actions, sessionId, drawn.filter(call => CARDS.has(toolName(call)) && call.callId).map(call => call.callId))
+  useShownCards(actions, sessionId, drawn.filter(call => (CARDS.has(toolName(call)) || isComputerCall(toolName(call))) && call.callId).map(call => call.callId))
   if (drawn.length === 0) return h(CellEmpty)
-  const env = { sessionId, roster, actions, useUi, useWork, findBot, heldCards, hooks: { useBrowserHolds, useBrowserTabs, useBrowserPages } }
+  const env = { sessionId, roster, actions, useUi, useWork, findBot, heldCards, hooks: { useBrowserHolds, useBrowserTabs, useBrowserPages, useComputer } }
   return h(Fragment, null, drawn.map((call, index) => h(Fragment, { key: call.callId ?? index }, renderCall(call, env))))
 }

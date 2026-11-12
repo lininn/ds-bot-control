@@ -14,9 +14,6 @@ import { build } from 'esbuild'
 
 const PLUGIN = dirname(dirname(fileURLToPath(import.meta.url)))
 const OUTPUT = join(PLUGIN, 'client.js')
-// dsh's module loader keys the registration by the package name it mounted, so the id must
-// follow package.json; a hardcoded name broke the scoped rename.
-const PACKAGE_NAME = JSON.parse(readFileSync(join(PLUGIN, 'package.json'), 'utf8')).name
 const PLATFORM_MODULES = ['react', 'react-dom', '@deepseek-ai/dsh-client-ui-primitives']
 
 export async function bundleClient() {
@@ -40,7 +37,7 @@ export async function bundleClient() {
   return [
     '// Generated from src/client by `npm run build` (scripts/build-client.mjs). Do not edit by hand.',
     'window.__ModuleLoader__.load({',
-    `  id: ${JSON.stringify(PACKAGE_NAME)},`,
+    '  id: \'ds-bot\',',
     '  factory: (require) => {',
     'const module = { exports: {} }',
     result.outputFiles[0].text.trimEnd(),

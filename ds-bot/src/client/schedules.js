@@ -41,7 +41,7 @@ function dayAndTime(ms) {
 }
 function weekdayNames(days) {
   const names = days.map(day => when(Date.UTC(2024, 0, day), { weekday: 'short', timeZone: 'UTC' }))
-  return names.join(dateLocale().startsWith('zh') ? '、' : ', ')
+  return names.join(dateLocale().startsWith('zh') || dateLocale().startsWith('ja') ? '、' : ', ')
 }
 function everyText(seconds) {
   if (seconds % 86400 === 0) return seconds === 86400 ? t('Every day') : t('Every {count} days', { count: seconds / 86400 })
@@ -66,11 +66,13 @@ export function timingText(task) {
       return `${text}${zone}`
     }
     case 'cron': return `${t('On the schedule {expression}', { expression: task.expression })}${zone}`
+    case 'rrule': return t('Custom schedule')
     default: return ''
   }
 }
 const nextText = (task) => {
   if (task.state === 'overdue' || (task.state === undefined && task.status === 'active' && Date.parse(task.scheduledAt) <= Date.now())) return t('Overdue: {time}', { time: dayAndTime(Date.parse(task.scheduledAt)) })
+  if (task.status === 'paused') return t('Paused')
   return task.status === 'active' ? t('Next: {time}', { time: dayAndTime(Date.parse(task.scheduledAt)) }) : t('Finished')
 }
 
@@ -177,8 +179,8 @@ function AutomationOff({ actions }) {
   return h('div', { className: 'bt-set-card bt-task-off' },
     h('span', { className: 'bt-task-off-mark' }, h(ClockIcon)),
     h('span', { className: 'bt-task-off-title' }, t('Turn on Automation tasks in DSH')),
-    h('span', { className: 'bt-set-hint' }, t('Switch on Automation tasks on the Plugins page in Harness settings.')),
-    actions.openHarnessSettings ? h('button', { type: 'button', className: 'bt-soft bt-soft-sm', onClick: actions.openHarnessSettings }, t('Open Harness settings')) : null)
+    h('span', { className: 'bt-set-hint' }, t('Switch on Automation tasks on the Plugins page in Settings.')),
+    h('button', { type: 'button', className: 'bt-soft bt-soft-sm', onClick: () => actions.openSettings('dsh', 'plugins') }, t('Open Plugins')))
 }
 
 // A plain `start` opens the create form for that Bot or group chat; the
@@ -219,8 +221,8 @@ export function BotSchedules({ bot, roster, actions }) {
     h('div', { className: 'bt-set-card' },
       !view.available
         ? h('div', { className: 'bt-set-row bt-bs-row' },
-            h('span', { className: 'bt-set-copy' }, h('span', { className: 'bt-set-hint' }, t('Switch on Automation tasks on the Plugins page in Harness settings.'))),
-            actions.openHarnessSettings ? h('button', { type: 'button', className: 'bt-soft bt-soft-sm', onClick: actions.openHarnessSettings }, t('Open Harness settings')) : null)
+            h('span', { className: 'bt-set-copy' }, h('span', { className: 'bt-set-hint' }, t('Switch on Automation tasks on the Plugins page in Settings.'))),
+            h('button', { type: 'button', className: 'bt-soft bt-soft-sm', onClick: () => actions.openSettings('dsh', 'plugins') }, t('Open Plugins')))
         : [
             ...tasks.map(task => h(TaskRow, { key: task.id, task, actions, roster, onView: publish })),
             h('button', { key: 'new', type: 'button', className: 'bt-set-row bt-bs-row bt-gs-add', onClick: () => actions.openSettings('schedules', bot.id) }, h(PlusIcon), t('New task')),
@@ -234,7 +236,7 @@ export function ScheduleSummary({ bot, actions }) {
   return h('div', null,
     h('div', { className: 'bt-section-title' }, tasks.length === 0 ? t('Scheduled tasks') : t('Scheduled tasks · {count}', { count: tasks.length })),
     tasks.length === 0
-      ? h('button', { type: 'button', className: 'bt-more', onClick: () => actions.openSettings('schedules', bot.id) }, view?.available === false ? t('Switch on Automation tasks on the Plugins page in Harness settings.') : t('No scheduled tasks yet. Add one'))
+      ? h('button', { type: 'button', className: 'bt-more', onClick: () => actions.openSettings('schedules', bot.id) }, view?.available === false ? t('Switch on Automation tasks on the Plugins page in Settings.') : t('No scheduled tasks yet. Add one'))
       : h('div', { className: 'bt-task-list' }, tasks.slice(0, 3).map(task => h('button', { key: task.id, type: 'button', className: 'bt-task-line', onClick: () => actions.openSettings('schedules', `bot:${bot.id}`) },
 
           h(ClockIcon), h('span', { className: 'bt-task-line-title' }, task.title), h('span', { className: 'bt-task-line-when' }, timingText(task))))))
