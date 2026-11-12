@@ -103,7 +103,7 @@ The same card can carry DSH itself: a DS Bot release may name the DSH release it
 
 Settings → **Remote control** lets a phone drive this team. The computer keeps one outbound WebSocket to a relay, so no port is opened here; the phone signs in on the relay's website and picks this computer. The public relay is `https://ds.d-1.top`, used when no other address is set.
 
-- Sign in with a blog account in the settings page. The relay's access token and this computer's device id are kept in `relay.json` under the team home (`<home>/relay.json`, readable by the owner only); the token is never shown again. **Sign out** forgets it.
+- Sign in with a blog account in the settings page. The relay-issued device credential and this computer's device id are kept in `relay.json` under the team home (`<home>/relay.json`, readable by the owner only); the password and access token are never written there. **Sign out** forgets the device credential.
 - One account can bind several computers. The phone shows a device list when more than one is online, and a **Switch device** button in the shell's header returns to it.
 - The address is taken from the saved value first, then `relay.url`, then `DS_BOT_RELAY_URL`, then the built-in default. A blank value counts as unset, so an empty `DS_BOT_RELAY_URL` cannot hide the default. A deployment that runs its own relay sets `relay.url` (or the environment variable) and can sign in on its own address from the settings page.
 - `relay: false` (or `enabled: false`) turns the feature off completely. A profile `token` binds a machine without the settings page, for a deployment that pairs machines itself.

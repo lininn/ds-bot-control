@@ -300,13 +300,24 @@ jobs:
           manifest="$(find app/build/intermediates/merged_manifests/release -name AndroidManifest.xml -print -quit)"
           test -n "$manifest"
           grep -q 'android:usesCleartextTraffic="false"' "$manifest"
-      - name: Attach the APK to the release
-        if: github.event_name == 'release'
+      - name: Keep the APK
         run: |
           version="$(node -p "require('../ds-bot/package.json').version")"
           apk="dist-pack/DS-Bot-$version-android.apk"
           mkdir -p dist-pack
           cp app/build/outputs/apk/release/app-release.apk "$apk"
+      - name: Keep the APK for real-device checks
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DS-Bot-android
+          path: android/dist-pack/DS-Bot-*-android.apk
+          retention-days: 7
+      - name: Attach the APK to the release
+        if: github.event_name == 'release'
+        run: |
+          version="$(node -p "require('../ds-bot/package.json').version")"
+          apk="dist-pack/DS-Bot-$version-android.apk"
           gh release upload "$TAG" "$apk" --clobber
 
   downloads:
