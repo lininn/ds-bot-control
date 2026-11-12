@@ -17,6 +17,7 @@ export const PACKAGES = [
   { file: 'mac-x64.zip', system: 'macOS, Intel' },
   { file: 'linux-x86_64.AppImage', system: 'Linux, AppImage' },
   { file: 'linux-amd64.deb', system: 'Linux, deb (Debian, Ubuntu)' },
+  { file: 'android.apk', system: 'Android (APK)', note: 'Opens the relay page / 打开 relay 手机页' },
 ]
 export const SUMS = 'SHA256SUMS.txt'
 // The table sits between these, so a second run replaces it instead of adding another.

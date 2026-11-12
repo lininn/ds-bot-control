@@ -23,7 +23,9 @@ ANDROID_HOME=/path/to/android-sdk gradle assembleRelease
 ```
 
 `.github/workflows/android.yml` builds it on a push under `android/` or on a dispatch, and
-keeps the APK as the `DS-Bot-android` artifact for seven days.
+keeps the APK as the `DS-Bot-android` artifact for seven days. The release workflow
+(`.github/workflows/release.yml`) builds it again for a GitHub release and attaches it as
+`DS-Bot-<version>-android.apk`, which the release's download table lists.
 
 ## Signing
 
@@ -40,4 +42,7 @@ secrets:
 | `ANDROID_KEY_PASSWORD` | the key password |
 
 The workflow decodes the keystore and the Gradle build signs with it when
-`ANDROID_KEYSTORE_PATH` is set.
+`ANDROID_KEYSTORE_PATH` is set. With the same key on every release, a new APK installs over
+the old one; without it, the debug key changes each build and an update needs an uninstall
+first. Keep a copy of the keystore: losing it means the next build can only be installed
+after uninstalling.
