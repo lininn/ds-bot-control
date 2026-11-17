@@ -305,6 +305,9 @@ var JA = {
   "This DSH cannot set up model providers.": "この DSH ではモデルプロバイダーを設定できません。",
   "This DSH cannot set up model providers": "この DSH ではモデルプロバイダーを設定できません",
   "Model providers · {count}": "モデルプロバイダー · {count}",
+  "Failure retries": "失敗時の再試行",
+  "Retries after a failed request. 0 turns them off.": "リクエスト失敗後に再試行する回数です。0 で再試行しません。",
+  "Retries without a limit. Saving a number sets a limit.": "現在は再試行回数に上限がありません。数値を保存すると上限が設定されます。",
   "Add a provider": "プロバイダーを追加",
   "Needs an API key": "API キーが必要",
   "Key set": "キー設定済み",
@@ -392,6 +395,9 @@ var JA = {
   "This API key is not in the right format.": "この API キーの形式が正しくありません。",
   "{provider} did not accept the current API key.": "{provider} で現在の API キーが拒否されました。",
   "{provider} did not accept the current API key ({status}).": "{provider} で現在の API キーが拒否されました（{status}）。",
+  "The model service blocked the content": "モデルサービスのコンテンツフィルターが内容をブロックしました",
+  "{provider} blocked this request with its content filter. The API key is not the problem; edit the input or start a new chat.": "{provider} のコンテンツフィルターがこのリクエストをブロックしました。API キーの問題ではありません。入力を変更するか、新しいチャットを始めてください。",
+  "{provider} blocked this request with its content filter ({status}). The API key is not the problem; edit the input or start a new chat.": "{provider} のコンテンツフィルターがこのリクエストをブロックしました（{status}）。API キーの問題ではありません。入力を変更するか、新しいチャットを始めてください。",
   "{provider} is out of balance or quota.": "{provider} の残高または利用枠が不足しています。",
   "{provider} is out of balance or quota ({status}).": "{provider} の残高または利用枠が不足しています（{status}）。",
   "The DeepSeek account balance is too low.": "DeepSeek アカウントの残高が不足しています。",
@@ -2556,6 +2562,9 @@ var KO = {
   "This DSH cannot set up model providers.": "이 DSH에서는 모델 제공자를 설정할 수 없습니다.",
   "This DSH cannot set up model providers": "이 DSH에서는 모델 제공자를 설정할 수 없습니다",
   "Model providers · {count}": "모델 제공자 · {count}",
+  "Failure retries": "실패 시 재시도",
+  "Retries after a failed request. 0 turns them off.": "요청이 실패한 뒤 재시도하는 횟수입니다. 0이면 재시도하지 않습니다.",
+  "Retries without a limit. Saving a number sets a limit.": "현재 재시도 횟수에 제한이 없습니다. 숫자를 저장하면 제한이 설정됩니다.",
   "Add a provider": "제공자 추가",
   "Needs an API key": "API 키 필요",
   "Key set": "키 설정됨",
@@ -2646,6 +2655,9 @@ var KO = {
   "This API key is not in the right format.": "이 API 키의 형식이 올바르지 않습니다.",
   "{provider} did not accept the current API key.": "{provider}에서 현재 API 키를 승인하지 않았습니다.",
   "{provider} did not accept the current API key ({status}).": "{provider}에서 현재 API 키를 승인하지 않았습니다 ({status}).",
+  "The model service blocked the content": "모델 서비스의 콘텐츠 필터가 내용을 차단했습니다",
+  "{provider} blocked this request with its content filter. The API key is not the problem; edit the input or start a new chat.": "{provider}의 콘텐츠 필터가 이 요청을 차단했습니다. API 키 문제가 아닙니다. 입력을 수정하거나 새 대화를 시작하세요.",
+  "{provider} blocked this request with its content filter ({status}). The API key is not the problem; edit the input or start a new chat.": "{provider}의 콘텐츠 필터가 이 요청을 차단했습니다 ({status}). API 키 문제가 아닙니다. 입력을 수정하거나 새 대화를 시작하세요.",
   "{provider} is out of balance or quota.": "{provider}의 잔액 또는 할당량이 부족합니다.",
   "{provider} is out of balance or quota ({status}).": "{provider}의 잔액 또는 할당량이 부족합니다 ({status}).",
   "The DeepSeek account balance is too low.": "DeepSeek 계정 잔액이 부족합니다.",
@@ -4849,6 +4861,9 @@ var ES = {
   "This DSH cannot set up model providers.": "Este DSH no puede configurar proveedores de modelos.",
   "This DSH cannot set up model providers": "Este DSH no puede configurar proveedores de modelos",
   "Model providers · {count}": "Proveedores de modelos · {count}",
+  "Failure retries": "Reintentos tras un fallo",
+  "Retries after a failed request. 0 turns them off.": "Reintentos tras una solicitud fallida. 0 los desactiva.",
+  "Retries without a limit. Saving a number sets a limit.": "Los reintentos no tienen límite. Guardar un número fija un límite.",
   "Add a provider": "Añadir proveedor",
   "Needs an API key": "Requiere clave API",
   "Key set": "Clave configurada",
@@ -4939,6 +4954,9 @@ var ES = {
   "This API key is not in the right format.": "Esta clave API no tiene el formato correcto.",
   "{provider} did not accept the current API key.": "{provider} no aceptó la clave API actual.",
   "{provider} did not accept the current API key ({status}).": "{provider} no aceptó la clave API actual ({status}).",
+  "The model service blocked the content": "El filtro de contenido del servicio de modelos bloqueó el contenido",
+  "{provider} blocked this request with its content filter. The API key is not the problem; edit the input or start a new chat.": "El filtro de contenido de {provider} bloqueó esta solicitud. La clave API no es el problema; edita la entrada o inicia un chat nuevo.",
+  "{provider} blocked this request with its content filter ({status}). The API key is not the problem; edit the input or start a new chat.": "El filtro de contenido de {provider} bloqueó esta solicitud ({status}). La clave API no es el problema; edita la entrada o inicia un chat nuevo.",
   "{provider} is out of balance or quota.": "{provider} se quedó sin saldo o cuota.",
   "{provider} is out of balance or quota ({status}).": "{provider} se quedó sin saldo o cuota ({status}).",
   "The DeepSeek account balance is too low.": "El saldo de la cuenta de DeepSeek es insuficiente.",
@@ -7139,6 +7157,9 @@ var FR = {
   "This DSH cannot set up model providers.": "Ce DSH ne peut pas configurer les fournisseurs de modèles.",
   "This DSH cannot set up model providers": "Ce DSH ne peut pas configurer les fournisseurs de modèles",
   "Model providers · {count}": "Fournisseurs de modèles · {count}",
+  "Failure retries": "Tentatives après un échec",
+  "Retries after a failed request. 0 turns them off.": "Tentatives après une requête échouée. 0 les désactive.",
+  "Retries without a limit. Saving a number sets a limit.": "Les tentatives sont illimitées. Enregistrer un nombre fixe une limite.",
   "Add a provider": "Ajouter un fournisseur",
   "Needs an API key": "Clé API requise",
   "Key set": "Clé configurée",
@@ -7226,6 +7247,9 @@ var FR = {
   "This API key is not in the right format.": "Cette clé API n’est pas au bon format.",
   "{provider} did not accept the current API key.": "{provider} a refusé la clé API actuelle.",
   "{provider} did not accept the current API key ({status}).": "{provider} a refusé la clé API actuelle ({status}).",
+  "The model service blocked the content": "Le filtre de contenu du service de modèles a bloqué le contenu",
+  "{provider} blocked this request with its content filter. The API key is not the problem; edit the input or start a new chat.": "Le filtre de contenu de {provider} a bloqué cette requête. La clé API n’est pas en cause ; modifiez la saisie ou démarrez une nouvelle discussion.",
+  "{provider} blocked this request with its content filter ({status}). The API key is not the problem; edit the input or start a new chat.": "Le filtre de contenu de {provider} a bloqué cette requête ({status}). La clé API n’est pas en cause ; modifiez la saisie ou démarrez une nouvelle discussion.",
   "{provider} is out of balance or quota.": "Le solde ou le quota de {provider} est épuisé.",
   "{provider} is out of balance or quota ({status}).": "Le solde ou le quota de {provider} est épuisé ({status}).",
   "The DeepSeek account balance is too low.": "Le solde du compte DeepSeek est insuffisant.",
@@ -9390,6 +9414,9 @@ var DE = {
   "This DSH cannot set up model providers.": "Dieses DSH kann keine Modellanbieter einrichten.",
   "This DSH cannot set up model providers": "Dieses DSH kann keine Modellanbieter einrichten",
   "Model providers · {count}": "Modellanbieter · {count}",
+  "Failure retries": "Wiederholungen nach Fehler",
+  "Retries after a failed request. 0 turns them off.": "Wiederholungen nach einer fehlgeschlagenen Anfrage. 0 schaltet sie ab.",
+  "Retries without a limit. Saving a number sets a limit.": "Wiederholungen sind unbegrenzt. Eine gespeicherte Zahl setzt ein Limit.",
   "Add a provider": "Anbieter hinzufügen",
   "Needs an API key": "API-Schlüssel erforderlich",
   "Key set": "Schlüssel hinterlegt",
@@ -9480,6 +9507,9 @@ var DE = {
   "This API key is not in the right format.": "Dieser API-Schlüssel hat nicht das richtige Format.",
   "{provider} did not accept the current API key.": "{provider} hat den aktuellen API-Schlüssel nicht akzeptiert.",
   "{provider} did not accept the current API key ({status}).": "{provider} hat den aktuellen API-Schlüssel nicht akzeptiert ({status}).",
+  "The model service blocked the content": "Der Inhaltsfilter des Modelldienstes hat den Inhalt blockiert",
+  "{provider} blocked this request with its content filter. The API key is not the problem; edit the input or start a new chat.": "Der Inhaltsfilter von {provider} hat diese Anfrage blockiert. Der API-Schlüssel ist nicht das Problem; ändere die Eingabe oder starte einen neuen Chat.",
+  "{provider} blocked this request with its content filter ({status}). The API key is not the problem; edit the input or start a new chat.": "Der Inhaltsfilter von {provider} hat diese Anfrage blockiert ({status}). Der API-Schlüssel ist nicht das Problem; ändere die Eingabe oder starte einen neuen Chat.",
   "{provider} is out of balance or quota.": "Guthaben oder Kontingent bei {provider} ist aufgebraucht.",
   "{provider} is out of balance or quota ({status}).": "Guthaben oder Kontingent bei {provider} ist aufgebraucht ({status}).",
   "The DeepSeek account balance is too low.": "Das Guthaben des DeepSeek-Kontos reicht nicht aus.",
@@ -11664,6 +11694,7 @@ var ZH = {
   // Models page
   "This DSH cannot set up model providers.": "这个 DSH 不能设置模型服务商。",
   "This DSH cannot set up model providers": "这个 DSH 不能设置模型服务商",
+  "Retries must be a whole number from 0 to 10": "重试次数必须是 0 到 10 之间的整数",
   "Model providers · {count}": "模型服务商 · {count}",
   "Add a provider": "添加服务商",
   "Needs an API key": "需要 API key",
@@ -11671,6 +11702,9 @@ var ZH = {
   "Key set outside DS Bot": "key 在 DS Bot 之外设置",
   "No models": "没有模型",
   "{count} models": "{count} 个模型",
+  "Failure retries": "失败重试次数",
+  "Retries after a failed request. 0 turns them off.": "请求失败后自动重试的次数，0 表示不重试。",
+  "Retries without a limit. Saving a number sets a limit.": "当前不限制重试次数；填入数字后会按次数限制。",
   // What a Bot runs on
   "Runs on": "运行方式",
   "DS Bot model": "DS Bot 模型",
@@ -11755,6 +11789,9 @@ var ZH = {
   "This API key is not in the right format.": "这个 API Key 的格式不对。",
   "{provider} did not accept the current API key.": "{provider} 不接受现在的 API Key。",
   "{provider} did not accept the current API key ({status}).": "{provider} 不接受现在的 API Key（{status}）。",
+  "The model service blocked the content": "模型服务的内容审核拦截了这条内容",
+  "{provider} blocked this request with its content filter. The API key is not the problem; edit the input or start a new chat.": "{provider} 的内容审核拦截了这次请求。问题不在 API Key；请修改输入内容或新开一个对话。",
+  "{provider} blocked this request with its content filter ({status}). The API key is not the problem; edit the input or start a new chat.": "{provider} 的内容审核拦截了这次请求（{status}）。问题不在 API Key；请修改输入内容或新开一个对话。",
   "{provider} is out of balance or quota.": "{provider} 的余额或额度不够了。",
   "{provider} is out of balance or quota ({status}).": "{provider} 的余额或额度不够了（{status}）。",
   "The DeepSeek account balance is too low.": "DeepSeek 账号余额不足。",
@@ -13355,6 +13392,7 @@ var FAILURES = {
   MISSING_CREDENTIAL: "The model has no API key",
   INVALID_CREDENTIAL: "The API key is not in the right format",
   AUTH: "The API key was rejected",
+  CONTENT_POLICY: "The model service blocked the content",
   QUOTA: "The account is out of quota",
   ACCOUNT_QUOTA: "The account is out of quota",
   ACCOUNT_SIGN_IN_REQUIRED: "The DeepSeek account needs a sign-in",
@@ -13764,6 +13802,7 @@ function teamActions({ call: call2, after, partFor, roster, ui: ui2, live, cards
     // Model providers and their API keys; DSH keeps them, and a key only travels to the host.
     providers: () => call2("providers"),
     setProviderKey: (provider, value) => after(call2("provider-key", { provider, value })),
+    setProviderRetry: (provider, maxRetries) => after(call2("provider-retry", { provider, maxRetries })),
     addProvider: (body) => after(call2("provider-add", body)),
     providerModels: (body) => call2("provider-models", body),
     removeProvider: (provider) => after(call2("provider-remove", { provider })),
@@ -30976,6 +31015,7 @@ var ENDPOINT_HINTS = {
   "google-generative-ai": "https://generativelanguage.googleapis.com/v1beta"
 };
 var SHOWN_MODELS = 8;
+var MAX_RETRY_ATTEMPTS = 10;
 var translated = (promise) => Promise.resolve(promise).catch((failure) => {
   throw new Error(hostText(failure?.message ?? String(failure)));
 });
@@ -31051,6 +31091,7 @@ function ProviderRow({ provider, apply: apply2, actions, open, onToggle }) {
       { className: "bt-secret-edit" },
       provider.key?.writable ? (0, import_react45.createElement)(KeyEditor, { provider, apply: apply2, actions }) : null,
       provider.key && !provider.key.writable ? (0, import_react45.createElement)("div", { className: "bt-set-hint" }, t("This key comes from outside DS Bot, such as an environment variable, and cannot be changed here.")) : null,
+      provider.retry ? (0, import_react45.createElement)(RetryEditor, { provider, apply: apply2, actions }) : null,
       provider.models.length > 0 ? (0, import_react45.createElement)(
         "div",
         { className: "bt-secret-edit-block" },
@@ -31104,6 +31145,48 @@ function KeyEditor({ provider, apply: apply2, actions }) {
       provider.key.configured ? (0, import_react45.createElement)("button", { type: "button", className: "bt-soft bt-soft-sm bt-secret-danger", onClick: () => apply2(actions.setProviderKey(provider.id, null)) }, t("Remove key")) : null
     ),
     saved ? (0, import_react45.createElement)("div", { className: "bt-set-hint bt-secret-ok", role: "status" }, (0, import_react45.createElement)(CheckIcon), t("Saved.")) : null
+  );
+}
+function RetryEditor({ provider, apply: apply2, actions }) {
+  const current = provider.retry;
+  const [value, setValue] = (0, import_react45.useState)(current.maxRetries === null ? "" : String(current.maxRetries));
+  const [saved, setSaved] = (0, import_react45.useState)(false);
+  const count = /^\d+$/.test(value.trim()) ? Number(value.trim()) : NaN;
+  const ready = Number.isInteger(count) && count >= 0 && count <= MAX_RETRY_ATTEMPTS && count !== current.maxRetries;
+  const save = () => {
+    if (!ready) return;
+    void apply2(actions.setProviderRetry(provider.id, count)).then((ok) => {
+      if (ok) setSaved(true);
+    });
+  };
+  const edit = (next) => {
+    setValue(next);
+    setSaved(false);
+  };
+  return (0, import_react45.createElement)(
+    "div",
+    { className: "bt-secret-edit-block bt-provider-retry" },
+    (0, import_react45.createElement)("div", { className: "bt-secret-edit-label" }, t("Failure retries")),
+    (0, import_react45.createElement)(
+      "div",
+      { className: "bt-secret-inline" },
+      (0, import_react45.createElement)("input", {
+        type: "number",
+        className: "bt-input",
+        min: 0,
+        max: MAX_RETRY_ATTEMPTS,
+        step: 1,
+        "aria-label": t("Failure retries"),
+        value,
+        onChange: (event) => edit(event.target.value),
+        onKeyDown: (event) => {
+          if (event.key === "Enter") save();
+        }
+      }),
+      (0, import_react45.createElement)("button", { type: "button", className: "bt-soft bt-soft-sm", disabled: !ready, onClick: save }, t("Save"))
+    ),
+    saved ? (0, import_react45.createElement)("div", { className: "bt-set-hint bt-secret-ok", role: "status" }, (0, import_react45.createElement)(CheckIcon), t("Saved.")) : null,
+    (0, import_react45.createElement)("div", { className: "bt-set-hint" }, current.mode === "always" ? t("Retries without a limit. Saving a number sets a limit.") : t("Retries after a failed request. 0 turns them off."))
   );
 }
 function AddProvider({ view, apply: apply2, actions, onDone }) {
@@ -31242,6 +31325,7 @@ var PROVIDERS_CSS = `
 .bt-provider-state[data-state=missing]{color:var(--bt-danger)}
 .bt-provider-state[data-state=missing]::before{background:var(--bt-danger)}
 .bt-provider .bt-secret-field{align-items:center;gap:8px}
+.bt-provider-retry .bt-input{width:88px}
 .bt-provider .bt-secret-field>svg,.bt-provider-form .bt-secret-field>svg{flex:none;color:var(--bt-ink-3)}
 .bt-provider-models{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .bt-provider-models .bt-tag{max-width:220px}
@@ -33712,6 +33796,8 @@ function failureText2(code, { name, provider, status }) {
       return t("This API key is not in the right format.");
     case "AUTH":
       return status === void 0 ? t("{provider} did not accept the current API key.", { provider }) : t("{provider} did not accept the current API key ({status}).", { provider, status });
+    case "CONTENT_POLICY":
+      return status === void 0 ? t("{provider} blocked this request with its content filter. The API key is not the problem; edit the input or start a new chat.", { provider }) : t("{provider} blocked this request with its content filter ({status}). The API key is not the problem; edit the input or start a new chat.", { provider, status });
     case "QUOTA":
       return status === void 0 ? t("{provider} is out of balance or quota.", { provider }) : t("{provider} is out of balance or quota ({status}).", { provider, status });
     case "ACCOUNT_QUOTA":
@@ -33743,6 +33829,9 @@ function fixesFor(code, { canSignIn, official, topUp, onAccount = false }) {
       return ["rekey", "model"];
     case "AUTH":
       return ["rekey", canSignIn ? "use-account" : null, "model"].filter(Boolean);
+    // A content audit is about the input, not the credentials; no key action helps.
+    case "CONTENT_POLICY":
+      return [];
     case "QUOTA":
       return official ? ["top-up"] : [];
     case "ACCOUNT_QUOTA":
@@ -33789,8 +33878,10 @@ var providerName = (roster, provider) => provider === void 0 ? t("The model serv
 function failureFacts(data, blocked) {
   const facts = [];
   if (data.code) facts.push(["Code", t("Code"), data.code]);
-  if (blocked?.status !== void 0) facts.push(["HTTP status", t("HTTP status"), String(blocked.status)]);
-  if (blocked?.requestId) facts.push(["Request ID", t("Request ID"), blocked.requestId]);
+  const status = data.status ?? blocked?.status;
+  if (status !== void 0) facts.push(["HTTP status", t("HTTP status"), String(status)]);
+  const requestId = data.requestId ?? blocked?.requestId;
+  if (requestId) facts.push(["Request ID", t("Request ID"), requestId]);
   if (data.code !== "AUTH" && data.message) facts.push(["Message", t("Provider message"), data.message]);
   return facts;
 }
@@ -33815,8 +33906,10 @@ function TechnicalDetails({ facts }) {
 }
 function FailureCell({ node, sessionId, useRoster, useTurnClock, actions }) {
   const roster = useRoster((value) => value);
-  const data = node?.data ?? {};
+  const failRow = node?.data ?? {};
   const bot = roster.byId?.[sessionId];
+  const host = bot?.failures?.[sessionId];
+  const data = host !== void 0 && host.turn === failRow.turn ? { ...failRow, ...host } : failRow;
   const later = useTurnClock((state) => Object.keys(state[sessionId] ?? {}).some((turn) => Number(turn) > data.turn));
   const account = useAccountView(actions);
   const signedIn = account?.status === "credential-stored";
@@ -33827,7 +33920,7 @@ function FailureCell({ node, sessionId, useRoster, useTurnClock, actions }) {
   const [joining, setJoining] = (0, import_react52.useState)(null);
   const blocked = bot?.blocked?.code === data.code ? bot.blocked : void 0;
   const provider = blocked?.provider ?? providerOf(bot, roster);
-  const text = failureText2(data.code, { name: bot?.name ?? t("This Bot"), provider: providerName(roster, provider), status: blocked?.status });
+  const text = failureText2(data.code, { name: bot?.name ?? t("This Bot"), provider: providerName(roster, provider), status: data.status ?? blocked?.status });
   const facts = failureFacts(data, blocked);
   const current = bot !== void 0 && currentPart(bot) === sessionId && !later;
   const moveToAccount = () => {

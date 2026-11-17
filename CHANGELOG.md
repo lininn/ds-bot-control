@@ -4,6 +4,24 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-17
+
+### Added
+
+- Settings → Models sets how many times a provider retries a failed request, from 0 to 10; 0 turns retrying off. The codes it retries stay as they are — the transient ones and `PI_AI_ERROR` — and a hand-written backoff is kept.
+
+### Changed
+
+- A model provider added in Settings → Models now gets five retries per failed request, including `PI_AI_ERROR` — the code the pi-ai adapter gives an upstream failure it cannot classify (a relay that blocked the session, a tool call cut off mid-JSON, an answer with no content), which used to fail a Bot's turn on the first attempt. A route saved without a retry policy is given the same default on start; a route that names its own policy keeps it.
+
+### Fixed
+
+- The Android APK is signed with the v1 (JAR), v2 and v3 schemes together. The Android Gradle plugin skips v1 and v3 when `minSdk` is 24 or higher, and some OEM package installers (vivo File Manager, OriginOS) treat a v2-only APK as carrying no developer certificate, so the first install could refuse it. CI now checks that every scheme is present in the built APK.
+- A turn that ends at the output limit far below the window its route declares — over 32,000 tokens in and under 4,096 out — is treated as a cut-off even when the Bot wrote something, and makes room on its own instead of sending the same size again and cutting off twice. ([#1461](https://github.com/Fei2411/DS-Bot/pull/1461))
+- A `403` that is a content audit is reported as `CONTENT_POLICY` with the response body and request id kept, instead of as a bad API key: the card says the key is not the problem, offers no key fixes, and the failure is remembered for that Bot on that turn. ([#1460](https://github.com/Fei2411/DS-Bot/pull/1460))
+- Work the plugin started — a model listing, a greeting waiting for its model — stops quietly when the host goes away, instead of throwing on a service it can no longer read. ([#1545](https://github.com/Fei2411/DS-Bot/pull/1545))
+- Connector (MCP) tool schemas reach the model plain, so a strict provider such as Moonshot/KIMI no longer refuses the whole tool list for one property with no `type` of its own or with null listed in an enum: unions collapse to their first non-null branch, every object and array is typed, and null leaves a scalar enum. Other tools keep their schemas. ([#1508](https://github.com/Fei2411/DS-Bot/pull/1521))
+
 ## [0.4.0] - 2026-11-12
 
 - Sync with upstream DS Bot 0.3.5: DeepSeek Harness `0.2.2-rc.1`, the six new interface languages, frameless macOS window, the desktop app's own DSH update handling, Computer use on Windows and macOS, the sidebar sections and the memory rework.

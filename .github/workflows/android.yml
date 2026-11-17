@@ -60,6 +60,20 @@ jobs:
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/dsbot.jks" >> "$GITHUB_ENV"
       - name: Build release APK
         run: gradle --no-daemon assembleRelease
+      - name: Verify APK signature schemes
+        # OEM pre-install scanners reject a v2-only APK; all three schemes must be in it.
+        run: |
+          apksigner="$(command -v apksigner || true)"
+          if [ -z "$apksigner" ]; then
+            sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+            apksigner="$(find "$sdk/build-tools" -name apksigner -type f | sort | tail -1)"
+          fi
+          test -n "$apksigner"
+          out="$("$apksigner" verify -v --min-sdk-version 21 app/build/outputs/apk/release/app-release.apk)"
+          echo "$out"
+          echo "$out" | grep -q 'Verified using v1 scheme (JAR signing): true'
+          echo "$out" | grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true'
+          echo "$out" | grep -q 'Verified using v3 scheme (APK Signature Scheme v3): true'
       - name: Verify release refuses cleartext
         run: |
           manifest="$(find app/build/intermediates/merged_manifests/release -name AndroidManifest.xml -print -quit)"

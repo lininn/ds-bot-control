@@ -177,6 +177,7 @@ const ZH = {
   // Models page
   'This DSH cannot set up model providers.': '这个 DSH 不能设置模型服务商。',
   'This DSH cannot set up model providers': '这个 DSH 不能设置模型服务商',
+  'Retries must be a whole number from 0 to 10': '重试次数必须是 0 到 10 之间的整数',
   'Model providers · {count}': '模型服务商 · {count}',
   'Add a provider': '添加服务商',
   'Needs an API key': '需要 API key',
@@ -184,6 +185,9 @@ const ZH = {
   'Key set outside DS Bot': 'key 在 DS Bot 之外设置',
   'No models': '没有模型',
   '{count} models': '{count} 个模型',
+  'Failure retries': '失败重试次数',
+  'Retries after a failed request. 0 turns them off.': '请求失败后自动重试的次数，0 表示不重试。',
+  'Retries without a limit. Saving a number sets a limit.': '当前不限制重试次数；填入数字后会按次数限制。',
   // What a Bot runs on
   'Runs on': '运行方式',
   'DS Bot model': 'DS Bot 模型',
@@ -268,6 +272,9 @@ const ZH = {
   'This API key is not in the right format.': '这个 API Key 的格式不对。',
   '{provider} did not accept the current API key.': '{provider} 不接受现在的 API Key。',
   '{provider} did not accept the current API key ({status}).': '{provider} 不接受现在的 API Key（{status}）。',
+  'The model service blocked the content': '模型服务的内容审核拦截了这条内容',
+  '{provider} blocked this request with its content filter. The API key is not the problem; edit the input or start a new chat.': '{provider} 的内容审核拦截了这次请求。问题不在 API Key；请修改输入内容或新开一个对话。',
+  '{provider} blocked this request with its content filter ({status}). The API key is not the problem; edit the input or start a new chat.': '{provider} 的内容审核拦截了这次请求（{status}）。问题不在 API Key；请修改输入内容或新开一个对话。',
   '{provider} is out of balance or quota.': '{provider} 的余额或额度不够了。',
   '{provider} is out of balance or quota ({status}).': '{provider} 的余额或额度不够了（{status}）。',
   'The DeepSeek account balance is too low.': 'DeepSeek 账号余额不足。',

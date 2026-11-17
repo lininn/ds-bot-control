@@ -3,6 +3,7 @@
 // it, the route's key in DSH's credential store under the reference the route names.
 // The providers to add are the ones DSH's directory of configurable providers offers.
 
+import { serviceOf } from './services.js'
 const PI_AI = 'llm-pi-ai'
 const ROUTE_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
 // The baseline wire protocols DSH's pi-ai adapter serves on a custom route; newer DSH
@@ -46,6 +47,33 @@ const COMPLETIONS_PROVIDERS = new Set([
   'zai', 'zai-coding-cn',
 ])
 const catalogProtocol = id => (RESPONSES_PROVIDERS.has(id) ? 'openai-responses' : COMPLETIONS_PROVIDERS.has(id) ? 'openai-completions' : undefined)
+
+// The policy every route DS Bot sets up gets: five retries before a turn fails on the
+// request. DSH's own default covers the transient codes; `PI_AI_ERROR` is the one the
+// pi-ai adapter gives an upstream failure it cannot classify — a relay that blocked the
+// session, a tool call cut off mid-JSON, an answer with no content — and it is the code
+// that used to fail a Bot's turn on the first attempt.
+export const RETRY_POLICY = Object.freeze({
+  mode: 'normal',
+  maxRetries: 5,
+  retryableCodes: Object.freeze(['EMPTY_RESPONSE', 'RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR']),
+})
+const defaultRetryPolicy = () => ({ ...RETRY_POLICY, retryableCodes: [...RETRY_POLICY.retryableCodes] })
+// The policy a route that names none is given. A route that names one keeps it.
+const missingRetryPolicy = profile => (typeof profile !== 'object' || profile === null || profile.retryPolicy ? undefined : defaultRetryPolicy())
+// The most retries the Models page offers: enough to ride out a bad patch upstream
+// without leaving a Bot's turn waiting on it for long.
+const MAX_RETRY_ATTEMPTS = 10
+// What the page shows for a route's policy: a route with none runs on the default.
+function retryViewOf(profile) {
+  const policy = profile?.retryPolicy
+  const own = typeof policy === 'object' && policy !== null
+  const mode = own && policy.mode === 'always' ? 'always' : 'normal'
+  const maxRetries = own && Number.isInteger(policy.maxRetries) && policy.maxRetries >= 0
+    ? policy.maxRetries
+    : mode === 'always' ? null : RETRY_POLICY.maxRetries
+  return { mode, maxRetries }
+}
 
 // The reference DSH's own Models page derives for a route's key, so a provider added
 // here and one added there read the same key.
@@ -160,11 +188,13 @@ export function install(rt) {
     return map
   }
 
-  // Backfill compatibility defaults onto custom routes (and catalog routes pointed at a
-  // custom gateway) that were saved before DS Bot wrote `compat`, or added through DSH's
-  // own Models page. Explicit user settings win per field.
+  // Backfill the defaults DS Bot gives the routes it sets up onto user routes saved
+  // before them: compatibility switches for custom routes (and catalog routes pointed
+  // at a custom gateway) that predate `compat`, or added through DSH's own Models page,
+  // and the retry policy a route without one runs on. Explicit user settings win per
+  // field.
   let repairing = Promise.resolve()
-  async function ensureCustomCompat() {
+  async function ensureRouteDefaults() {
     const found = seams()
     if (found === undefined) return
     const section = sections(found.settings).get(PI_AI)
@@ -174,13 +204,15 @@ export function install(rt) {
     for (const [id, profile] of Object.entries(userProviders)) {
       const nextCompat = compatForRoute(id, profile)
       if (nextCompat !== undefined) ops.push({ op: 'set', path: ['providers', id, 'compat'], value: nextCompat })
+      const retryPolicy = missingRetryPolicy(profile)
+      if (retryPolicy !== undefined) ops.push({ op: 'set', path: ['providers', id, 'retryPolicy'], value: retryPolicy })
     }
     if (ops.length === 0) return
     await found.settings.mutate(PI_AI, ops, section.revision)
     rt.dropCatalog()
   }
   function repairRoutes() {
-    repairing = repairing.then(ensureCustomCompat, ensureCustomCompat).catch(() => {})
+    repairing = repairing.then(ensureRouteDefaults, ensureRouteDefaults).catch(() => {})
     return repairing
   }
   repairRoutes()
@@ -192,7 +224,9 @@ export function install(rt) {
     if (found === undefined) return new Map()
     const map = sections(found.settings)
     const refs = new Map()
-    for (const entry of ctx.llm.listConfigurableProviders()) {
+    const llm = serviceOf(ctx, 'llm')
+    if (llm === undefined) return refs
+    for (const entry of llm.listConfigurableProviders()) {
       const ref = refOf(profileOf(entry, map))
       if (ref !== undefined) refs.set(entry.provider, ref)
     }
@@ -239,6 +273,7 @@ export function install(rt) {
         key: ref === undefined ? null : { configured: info?.configured === true, writable: info?.writable !== false },
         removable: entry.settingsNs === PI_AI && profileOf(entry, map, 'user') !== undefined && profileOf(entry, map, 'base') === undefined,
         custom: entry.declared === true,
+        ...(entry.settingsNs === PI_AI ? { retry: retryViewOf(profile) } : {}),
         ...(entry.error ? { error: entry.error } : {}),
       })
     }
@@ -266,6 +301,26 @@ export function install(rt) {
     rt.dropCatalog()
   }
 
+  // How many times a route's failed request is retried. 0 turns retrying off; the codes
+  // it retries — the transient ones and the upstream failures pi-ai cannot classify —
+  // stay as they are, and so does a hand-written backoff.
+  async function setProviderRetry(provider, value) {
+    await repairing
+    const { settings } = usable()
+    const map = sections(settings)
+    const entry = entryOf(provider)
+    if (entry === undefined || entry.settingsNs !== PI_AI || profileOf(entry, map) === undefined) throw invalid(`${provider} is not set up`)
+    if (!Number.isInteger(value) || value < 0 || value > MAX_RETRY_ATTEMPTS) throw invalid(`Retries must be a whole number from 0 to ${MAX_RETRY_ATTEMPTS}`)
+    const current = profileOf(entry, map)?.retryPolicy
+    const policy = {
+      ...(typeof current === 'object' && current !== null ? current : defaultRetryPolicy()),
+      mode: 'normal',
+      maxRetries: value,
+    }
+    await settings.mutate(PI_AI, [{ op: 'set', path: [...entry.settingsPath, 'retryPolicy'], value: policy }], map.get(PI_AI)?.revision)
+    return providersView()
+  }
+
   // `provider` from DSH's directory, or a route the user declares (`custom`) for an
   // endpoint DSH ships nothing about. The route goes in first, then its key, as DSH's
   // own Models page does it: a failed key write leaves a provider that asks for one.
@@ -288,6 +343,7 @@ export function install(rt) {
     // A blank key keeps a key that is already there, else the provider's own sign-in.
     const keyed = key !== undefined || info.configured === true
     const profile = custom ? customProfile(body, known, protocolsOf(map.get(PI_AI))) : {}
+    profile.retryPolicy = defaultRetryPolicy()
     if (keyed) profile.apiKeyEnv = ref
     await settings.mutate(PI_AI, [{ op: 'set', path: entry?.settingsPath ?? ['providers', provider], value: profile }], map.get(PI_AI)?.revision)
     if (key !== undefined) await credentials.set(ref, key)
@@ -360,5 +416,5 @@ export function install(rt) {
     return providersView()
   }
 
-  Object.assign(rt, { keyRefs, missingKeys, providersView, setProviderKey, clearProviderKey, addProvider, discoverModels, removeProvider })
+  Object.assign(rt, { keyRefs, missingKeys, providersView, setProviderKey, clearProviderKey, setProviderRetry, addProvider, discoverModels, removeProvider })
 }

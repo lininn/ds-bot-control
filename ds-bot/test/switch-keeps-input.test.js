@@ -487,6 +487,31 @@ test('a cut-off turn that wrote text does not move the part', async (t) => {
   assert.deepEqual(host.created, [])
 })
 
+test('a turn cut off far below the window it asked for moves on even after writing', async (t) => {
+  const host = await start({ services: cutOffServices })
+  t.after(host.stop)
+  const agent = host.agentOf('b')
+  agent.session.requestHeader = () => ({ config: { provider: 'gateway', model: 'step-5' } })
+  const idle = () => host.ctx.emit('agent/status', { agent, status: 'idle' })
+  for (const turn of [1, 2]) {
+    host.emit('b', 'turn/start', { turn })
+    // A big input and a tiny output: the route stopped far below the window it declares.
+    host.emit('b', 'assistant/message', {
+      message: { content: [{ type: 'text', text: `Half ${turn}` }] },
+      usage: { inputTokens: 120_000, outputTokens: 40 },
+    })
+    host.emit('b', 'turn/end', { turn, reason: { kind: 'max-tokens' } })
+    idle()
+    await settle()
+  }
+  await until(() => host.state().bots.b.sessionId === 's1')
+
+  const entries = (await host.rt.diagnostics.entries()).filter(entry => entry.code === 'MAX_TOKENS')
+  assert.equal(entries.length, 2)
+  assert.match(entries[0].text, /40 tokens out/)
+  assert.equal(host.state().bots.b.segments[0].fallback, 'cutoff')
+})
+
 test('a group conversation cut off with nothing written moves on too', async (t) => {
   const host = await start({ services: cutOffServices, state: GROUP_TEAM })
   t.after(host.stop)

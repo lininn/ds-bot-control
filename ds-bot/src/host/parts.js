@@ -827,11 +827,12 @@ export function install(rt) {
   const noteFailures = new Map()
   // Parts the steward is deciding about at the end of a turn.
   const checking = new Set()
-  // Turns cut off at the output limit with nothing written, in a row, per part.
+  // Turns cut off at the output limit in a row, per part: with nothing written, or far
+  // below the window the route declares.
   const cutOffs = new Map()
   // The turn tracker reports every turn it sees end, so that only turns in a row count.
-  rt.noteCutOffTurn = (sessionId, { withoutText }) => {
-    if (withoutText) cutOffs.set(sessionId, (cutOffs.get(sessionId) ?? 0) + 1)
+  rt.noteCutOffTurn = (sessionId, { withoutText, premature }) => {
+    if (withoutText || premature) cutOffs.set(sessionId, (cutOffs.get(sessionId) ?? 0) + 1)
     else cutOffs.delete(sessionId)
   }
   // Parts that could not follow the Bot's run mode, and the time before which they do
@@ -1428,9 +1429,10 @@ export function install(rt) {
     // A local agent CLI owns its in-session compaction.
     if (rt.isLocalAgentRef?.(rt.botOf(placeOf(agent.id)?.botId)?.model ?? rt.botOf(placeOf(agent.id)?.botId)?.appliedModel) === true) return
     if (lastTurnEnd(agent)?.data?.reason?.kind === 'error') return
-    // Twice in a row cut off at the output limit with nothing written: the request is
-    // over the window the route really has, so the same size is not sent again. The
-    // part moves on the way an overflow moves it, without a note at that size.
+    // Twice in a row cut off at the output limit with nothing written, or stopped far
+    // below the window the route declares: the request is over the window the route
+    // really has, so the same size is not sent again. The part moves on the way an
+    // overflow moves it, without a note at that size.
     if ((cutOffs.get(agent.id) ?? 0) >= 2) {
       if (await canMakeRoom(agent)) {
         cutOffs.delete(agent.id)

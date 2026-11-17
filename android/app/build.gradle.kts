@@ -32,12 +32,23 @@ android {
     }
 
     signingConfigs {
+        // AGP skips the v1 (JAR) and v3 signatures when minSdk >= 24, and several OEM
+        // pre-install scanners (vivo File Manager / OriginOS) treat a v2-only APK as
+        // carrying no developer certificate. Ask for all three on every config.
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+        }
         if (keystorePath != null) {
             create("release") {
                 storeFile = File(keystorePath)
                 storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("ANDROID_KEY_ALIAS")
                 keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }

@@ -8,6 +8,7 @@ import { chmod, mkdir, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { replaceFile } from './files.js'
+import { serviceOf } from './services.js'
 import { output } from './tools.js'
 
 export const SECRET_NAME = /^[A-Z][A-Z0-9_]{0,63}$/
@@ -510,7 +511,9 @@ export function install(rt) {
     const fresh = [...(messages ?? [])]
     rewritten.add(fresh)
     rt.carryUsageTag(options.messages, fresh)
-    return ctx.llm.stream({ ...options, messages: fresh, ...(system !== undefined ? { system } : {}) })
+    const llm = serviceOf(ctx, 'llm')
+    if (llm === undefined) return next()
+    return llm.stream({ ...options, messages: fresh, ...(system !== undefined ? { system } : {}) })
   })
 
   function resolveEnv(execution) {

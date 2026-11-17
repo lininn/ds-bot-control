@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { Config as PiAiConfig } from '@deepseek-ai/dsh-llm-pi-ai'
 import { install as installModels } from '../src/host/models.js'
-import { checkKey, install, keyRefFor } from '../src/host/providers.js'
+import { checkKey, install, keyRefFor, RETRY_POLICY } from '../src/host/providers.js'
 
 // A DSH with the official DeepSeek route, an account route, and the pi-ai adapter: its
 // directory offers catalog providers, and its settings take path writes the way DSH's
@@ -13,7 +13,16 @@ function dsh({ keys = {}, readOnly = [], user = {}, base = {}, catalog = { anthr
   const listeners = new Map()
   let revision = 0
   let pi = { user: structuredClone(user), base: structuredClone(base) }
-  const piValue = () => ({ providers: { ...pi.base.providers, ...pi.user.providers } })
+  // DSH merges the layers per provider: a user entry that only sets one field keeps the
+  // rest of the provider from the layer below.
+  const mergedProviders = (userLayer = pi.user, baseLayer = pi.base) => {
+    const providers = structuredClone(baseLayer.providers ?? {})
+    for (const [id, profile] of Object.entries(userLayer.providers ?? {})) {
+      providers[id] = { ...providers[id], ...structuredClone(profile) }
+    }
+    return providers
+  }
+  const piValue = () => ({ providers: mergedProviders() })
   const routes = () => Object.keys(piValue().providers)
   const services = {
     settings: {
@@ -30,8 +39,9 @@ function dsh({ keys = {}, readOnly = [], user = {}, base = {}, catalog = { anthr
           if (op.op === 'set') parent[op.path.at(-1)] = op.value
           else delete parent[op.path.at(-1)]
         }
-        for (const [id, profile] of Object.entries(next.providers ?? {})) {
-          if (!(id in catalog) && !(profile.models?.length > 0)) throw new Error(`llm-pi-ai: provider "${id}" resolves no models`)
+        const merged = mergedProviders(next)
+        for (const id of Object.keys(next.providers ?? {})) {
+          if (!(id in catalog) && !((merged[id]?.models?.length ?? 0) > 0)) throw new Error(`llm-pi-ai: provider "${id}" resolves no models`)
         }
         writes.push([ns, ops])
         pi = { ...pi, user: next }
@@ -125,7 +135,7 @@ test('a key set outside DS Bot is not overwritten or removed', async () => {
 test('a provider from DSH\'s list goes in with the key DSH\'s own page would name', async () => {
   const { rt, store, writes } = dsh()
   const view = await rt.addProvider({ provider: 'moonshotai', key: 'sk-kimi' })
-  assert.deepEqual(writes, [['llm-pi-ai', [{ op: 'set', path: ['providers', 'moonshotai'], value: { apiKeyEnv: 'MOONSHOTAI_API_KEY' } }]], ['set', 'MOONSHOTAI_API_KEY']])
+  assert.deepEqual(writes, [['llm-pi-ai', [{ op: 'set', path: ['providers', 'moonshotai'], value: { retryPolicy: RETRY_POLICY, apiKeyEnv: 'MOONSHOTAI_API_KEY' } }]], ['set', 'MOONSHOTAI_API_KEY']])
   assert.equal(store.MOONSHOTAI_API_KEY, 'sk-kimi')
   assert.deepEqual(row(view, 'moonshotai').models.map(model => model.ref), ['moonshotai/kimi-k3'])
   assert.equal(view.addable.some(entry => entry.id === 'moonshotai'), false)
@@ -138,7 +148,7 @@ test('a blank key keeps a key that is already there, else leaves the route witho
   const { rt, writes } = dsh({ keys: { ANTHROPIC_API_KEY: 'k' } })
   await rt.addProvider({ provider: 'anthropic', key: '' })
   await rt.addProvider({ provider: 'moonshotai' })
-  assert.deepEqual(writes.map(([, ops]) => ops[0].value), [{ apiKeyEnv: 'ANTHROPIC_API_KEY' }, {}])
+  assert.deepEqual(writes.map(([, ops]) => ops[0].value), [{ retryPolicy: RETRY_POLICY, apiKeyEnv: 'ANTHROPIC_API_KEY' }, { retryPolicy: RETRY_POLICY }])
 })
 
 test('a custom API goes in with its endpoint, protocol, compatibility switches and the models picked', async () => {
@@ -149,6 +159,7 @@ test('a custom API goes in with its endpoint, protocol, compatibility switches a
   })
   assert.deepEqual(writes[0], ['llm-pi-ai', [{ op: 'set', path: ['providers', 'relay'], value: {
     displayName: 'My relay', api: 'openai-completions', baseURL: 'https://relay.example/v1', apiKeyEnv: 'RELAY_API_KEY',
+    retryPolicy: RETRY_POLICY,
     compat: { supportsDeveloperRole: false, supportsStore: false, maxTokensField: 'max_tokens', requiresReasoningContentOnAssistantMessages: true },
     models: [{ id: 'relay-1', name: 'Relay One', contextWindow: 128000, input: ['text'] }, { id: 'relay-2' }],
   } }]])
@@ -160,6 +171,23 @@ test('a custom API goes in with its endpoint, protocol, compatibility switches a
   assert.deepEqual(writes.at(-1)[1][0].value.compat, { supportsDeveloperRole: false })
   await rt.addProvider({ custom: true, provider: 'anth-gw', api: 'anthropic-messages', baseURL: 'https://anth.example', models: ['m'] })
   assert.equal(writes.at(-1)[1][0].value.compat, undefined)
+})
+
+test('a route DS Bot sets up retries a failed request five times, including the failures pi-ai cannot classify', async () => {
+  const { rt, writes } = dsh()
+  await rt.addProvider({ provider: 'moonshotai' })
+  const value = writes[0][1][0].value
+  assert.deepEqual(value.retryPolicy, {
+    mode: 'normal',
+    maxRetries: 5,
+    retryableCodes: ['EMPTY_RESPONSE', 'RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR'],
+  })
+  // The written profile resolves under the real dsh-llm-pi-ai schema: five retries, and
+  // the code an upstream failure pi-ai cannot classify comes back as is retried too.
+  const validated = PiAiConfig({ providers: { moonshotai: value } }).providers.get().moonshotai
+  assert.equal(validated.retryPolicy.mode, 'normal')
+  assert.equal(validated.retryPolicy.maxRetries, 5)
+  assert.deepEqual([...validated.retryPolicy.retryableCodes].sort(), ['EMPTY_RESPONSE', 'PI_AI_ERROR', 'RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT'])
 })
 
 test('when DSH advertises google-generative-ai in llm-pi-ai schema, Gemini custom routes and discovery are admitted without OpenAI compat switches', async () => {
@@ -186,21 +214,25 @@ test('when DSH advertises google-generative-ai in llm-pi-ai schema, Gemini custo
   assert.equal(writes.at(-1)[1][0].value.compat, undefined)
 })
 
-test('existing custom routes and custom-endpoint catalog routes backfill missing compatibility switches without overwriting explicit ones', async () => {
+test('existing custom routes and custom-endpoint catalog routes backfill missing compatibility switches and the retry policy without overwriting explicit ones', async () => {
   const user = {
     providers: {
       moonshotai: { apiKeyEnv: 'MOONSHOTAI_API_KEY' },
       openai: { apiKeyEnv: 'OPENAI_API_KEY', baseURL: 'https://gateway.example/v1', models: [{ id: 'k3.1-pro' }] },
       relay: { api: 'openai-completions', baseURL: 'https://gateway.example/v1', compat: { supportsStore: true }, models: [{ id: 'k3.1-pro' }] },
+      kept: { api: 'openai-completions', baseURL: 'https://kept.example/v1', compat: { supportsDeveloperRole: false, supportsStore: false, maxTokensField: 'max_tokens', requiresReasoningContentOnAssistantMessages: true }, retryPolicy: { mode: 'always' }, models: [{ id: 'k3.1-pro' }] },
     },
   }
-  const { rt, writes } = dsh({ user, catalog: { moonshotai: ['kimi-k3'], openai: ['gpt-5'] } })
+  const { rt, writes } = dsh({ user, catalog: { moonshotai: ['kimi-k3'], openai: ['gpt-5'], kept: ['k3.1-pro'] } })
   await rt.providersView()
   assert.deepEqual(writes, [['llm-pi-ai', [
+    { op: 'set', path: ['providers', 'moonshotai', 'retryPolicy'], value: RETRY_POLICY },
     { op: 'set', path: ['providers', 'openai', 'compat'], value: { supportsDeveloperRole: false } },
+    { op: 'set', path: ['providers', 'openai', 'retryPolicy'], value: RETRY_POLICY },
     { op: 'set', path: ['providers', 'relay', 'compat'], value: { supportsDeveloperRole: false, supportsStore: true, maxTokensField: 'max_tokens', requiresReasoningContentOnAssistantMessages: true } },
+    { op: 'set', path: ['providers', 'relay', 'retryPolicy'], value: RETRY_POLICY },
   ]]])
-  // A second read sees every switch in place and writes nothing again.
+  // A second read sees every default in place and writes nothing again.
   writes.length = 0
   await rt.providersView()
   assert.deepEqual(writes, [])
@@ -302,4 +334,53 @@ test('an API key is what an HTTP header carries, without a NAME= or quotes', () 
 test('a route\'s key reference follows DSH\'s own Models page', () => {
   assert.equal(keyRefFor('moonshotai'), 'MOONSHOTAI_API_KEY')
   assert.equal(keyRefFor('my-gateway2'), 'MY_GATEWAY2_API_KEY')
+})
+
+test('the page sets how many times a failed request is retried', async () => {
+  const user = { providers: { moonshotai: { apiKeyEnv: 'MOONSHOTAI_API_KEY' } } }
+  const { rt, writes } = dsh({ user, catalog: { moonshotai: ['kimi-k3'] } })
+  // A route with no policy of its own runs on the default five.
+  assert.deepEqual(row(await rt.providersView(), 'moonshotai').retry, { mode: 'normal', maxRetries: 5 })
+  const view = await rt.setProviderRetry('moonshotai', 3)
+  assert.deepEqual(writes.at(-1), ['llm-pi-ai', [{
+    op: 'set',
+    path: ['providers', 'moonshotai', 'retryPolicy'],
+    value: { mode: 'normal', maxRetries: 3, retryableCodes: [...RETRY_POLICY.retryableCodes] },
+  }]])
+  assert.deepEqual(row(view, 'moonshotai').retry, { mode: 'normal', maxRetries: 3 })
+  // 0 turns retrying off; the page offers 0 to 10 only.
+  assert.deepEqual(row(await rt.setProviderRetry('moonshotai', 0), 'moonshotai').retry, { mode: 'normal', maxRetries: 0 })
+  for (const bad of [11, -1, 1.5, Number.NaN]) await assert.rejects(rt.setProviderRetry('moonshotai', bad), /whole number from 0 to 10/)
+  await assert.rejects(rt.setProviderRetry('nope', 2), /not set up/)
+  await assert.rejects(rt.setProviderRetry('deepseek-official', 2), /not set up/)
+})
+
+test('a provider that comes with the setup takes a retry count and keeps its key and models', async () => {
+  const base = { providers: { timi: { displayName: 'Timi', apiKeyEnv: 'TIMI_API_KEY', models: [{ id: 'm1' }] } } }
+  const { rt } = dsh({ base, keys: { TIMI_API_KEY: 'k' } })
+  const view = await rt.setProviderRetry('timi', 0)
+  const timi = row(view, 'timi')
+  assert.deepEqual(timi.retry, { mode: 'normal', maxRetries: 0 })
+  assert.equal(timi.removable, false)
+  assert.deepEqual(timi.key, { configured: true, writable: true })
+  assert.deepEqual(timi.models.map(model => model.name), ['m1'])
+})
+
+test('saving a count keeps the codes and backoff a route was given by hand', async () => {
+  const user = { providers: { relay: {
+    api: 'openai-completions',
+    baseURL: 'https://r.example/v1',
+    models: [{ id: 'r' }],
+    retryPolicy: { mode: 'always', retryableCodes: ['RATE_LIMIT'], backoff: { initialDelayMs: 100 } },
+  } } }
+  const { rt, writes } = dsh({ user })
+  // A policy set by hand to always retry has no count to show.
+  assert.deepEqual(row(await rt.providersView(), 'relay').retry, { mode: 'always', maxRetries: null })
+  await rt.setProviderRetry('relay', 4)
+  assert.deepEqual(writes.at(-1)[1][0].value, {
+    mode: 'normal',
+    maxRetries: 4,
+    retryableCodes: ['RATE_LIMIT'],
+    backoff: { initialDelayMs: 100 },
+  })
 })

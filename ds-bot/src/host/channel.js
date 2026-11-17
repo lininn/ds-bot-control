@@ -267,6 +267,8 @@ export function install(rt) {
           if (body.value === null) await rt.clearProviderKey(String(body.provider ?? ''))
           else await rt.setProviderKey(String(body.provider ?? ''), body.value)
           return ok(await rt.providersView())
+        case 'provider-retry':
+          return ok(await rt.setProviderRetry(String(body.provider ?? ''), Number(body.maxRetries)))
         case 'provider-add':
           return ok(await rt.addProvider(body))
         case 'provider-models':

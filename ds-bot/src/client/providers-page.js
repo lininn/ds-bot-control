@@ -19,6 +19,8 @@ const ENDPOINT_HINTS = {
   'google-generative-ai': 'https://generativelanguage.googleapis.com/v1beta',
 }
 const SHOWN_MODELS = 8
+// Matches the host's limit for the retries a provider's failed request gets.
+const MAX_RETRY_ATTEMPTS = 10
 
 // A failure in the interface language; the dialog's error line shows it.
 const translated = promise => Promise.resolve(promise).catch((failure) => { throw new Error(hostText(failure?.message ?? String(failure))) })
@@ -68,6 +70,7 @@ function ProviderRow({ provider, apply, actions, open, onToggle }) {
     open ? h('div', { className: 'bt-secret-edit' },
       provider.key?.writable ? h(KeyEditor, { provider, apply, actions }) : null,
       provider.key && !provider.key.writable ? h('div', { className: 'bt-set-hint' }, t('This key comes from outside DS Bot, such as an environment variable, and cannot be changed here.')) : null,
+      provider.retry ? h(RetryEditor, { provider, apply, actions }) : null,
       provider.models.length > 0 ? h('div', { className: 'bt-secret-edit-block' },
         h('div', { className: 'bt-secret-edit-label' }, t('Models')),
         h('div', { className: 'bt-provider-models' },
@@ -100,6 +103,34 @@ function KeyEditor({ provider, apply, actions }) {
       h('button', { type: 'button', className: 'bt-soft bt-soft-sm', disabled: !ready, onClick: save }, t('Save')),
       provider.key.configured ? h('button', { type: 'button', className: 'bt-soft bt-soft-sm bt-secret-danger', onClick: () => apply(actions.setProviderKey(provider.id, null)) }, t('Remove key')) : null),
     saved ? h('div', { className: 'bt-set-hint bt-secret-ok', role: 'status' }, h(CheckIcon), t('Saved.')) : null)
+}
+
+// How many times a failed request is retried on this provider. The codes it retries are
+// the provider's own; this only sets their count, and 0 turns retrying off.
+function RetryEditor({ provider, apply, actions }) {
+  const current = provider.retry
+  const [value, setValue] = useState(current.maxRetries === null ? '' : String(current.maxRetries))
+  const [saved, setSaved] = useState(false)
+  const count = /^\d+$/.test(value.trim()) ? Number(value.trim()) : NaN
+  const ready = Number.isInteger(count) && count >= 0 && count <= MAX_RETRY_ATTEMPTS && count !== current.maxRetries
+  const save = () => {
+    if (!ready) return
+    void apply(actions.setProviderRetry(provider.id, count)).then((ok) => { if (ok) setSaved(true) })
+  }
+  const edit = (next) => { setValue(next); setSaved(false) }
+  return h('div', { className: 'bt-secret-edit-block bt-provider-retry' },
+    h('div', { className: 'bt-secret-edit-label' }, t('Failure retries')),
+    h('div', { className: 'bt-secret-inline' },
+      h('input', {
+        type: 'number', className: 'bt-input', min: 0, max: MAX_RETRY_ATTEMPTS, step: 1,
+        'aria-label': t('Failure retries'), value, onChange: event => edit(event.target.value),
+        onKeyDown: (event) => { if (event.key === 'Enter') save() },
+      }),
+      h('button', { type: 'button', className: 'bt-soft bt-soft-sm', disabled: !ready, onClick: save }, t('Save'))),
+    saved ? h('div', { className: 'bt-set-hint bt-secret-ok', role: 'status' }, h(CheckIcon), t('Saved.')) : null,
+    h('div', { className: 'bt-set-hint' }, current.mode === 'always'
+      ? t('Retries without a limit. Saving a number sets a limit.')
+      : t('Retries after a failed request. 0 turns them off.')))
 }
 
 function AddProvider({ view, apply, actions, onDone }) {
@@ -189,6 +220,7 @@ export const PROVIDERS_CSS = `
 .bt-provider-state[data-state=missing]{color:var(--bt-danger)}
 .bt-provider-state[data-state=missing]::before{background:var(--bt-danger)}
 .bt-provider .bt-secret-field{align-items:center;gap:8px}
+.bt-provider-retry .bt-input{width:88px}
 .bt-provider .bt-secret-field>svg,.bt-provider-form .bt-secret-field>svg{flex:none;color:var(--bt-ink-3)}
 .bt-provider-models{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .bt-provider-models .bt-tag{max-width:220px}

@@ -118,6 +118,7 @@ export function teamActions({ call, after, partFor, roster, ui, live, cards, hel
     // Model providers and their API keys; DSH keeps them, and a key only travels to the host.
     providers: () => call('providers'),
     setProviderKey: (provider, value) => after(call('provider-key', { provider, value })),
+    setProviderRetry: (provider, maxRetries) => after(call('provider-retry', { provider, maxRetries })),
     addProvider: body => after(call('provider-add', body)),
     providerModels: body => call('provider-models', body),
     removeProvider: provider => after(call('provider-remove', { provider })),
