@@ -1,6 +1,9 @@
 // French (fr) localization for DS Bot client and DSH settings namespaces.
 
 export const FR = {
+  "Plugin switches": "Interrupteurs de plugins",
+  "Turn a plug-in off to stop it loading the next time DS Bot starts.": "Désactivez un plugin pour qu’il ne se charge plus au prochain démarrage de DS Bot.",
+  "No plug-in in this profile has an on/off switch.": "Aucun plugin de ce profil n’a d’interrupteur marche/arrêt.",
   "Android beta": "Android bêta",
   "Cannot reach the Server. Trying again…": "Impossible de joindre le serveur. Nouvel essai…",
   "No phones yet": "Aucun téléphone pour l’instant",

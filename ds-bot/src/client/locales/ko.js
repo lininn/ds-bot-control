@@ -1,6 +1,9 @@
 // Korean (ko) localization for DS Bot client and DSH settings namespaces.
 
 export const KO = {
+  "Plugin switches": "플러그인 스위치",
+  "Turn a plug-in off to stop it loading the next time DS Bot starts.": "플러그인을 끄면 다음에 DS Bot 을 시작할 때 더 이상 로드되지 않습니다.",
+  "No plug-in in this profile has an on/off switch.": "이 프로필에는 켜기/끄기 스위치가 있는 플러그인이 없습니다.",
   "Android beta": "Android 베타",
   "Cannot reach the Server. Trying again…": "서버에 연결할 수 없습니다. 다시 시도하는 중…",
   "No phones yet": "아직 휴대폰이 없습니다",

@@ -1,6 +1,9 @@
 // Japanese (ja) localization for DS Bot client and DSH settings namespaces.
 
 export const JA = {
+  "Plugin switches": "プラグインスイッチ",
+  "Turn a plug-in off to stop it loading the next time DS Bot starts.": "プラグインをオフにすると、次回 DS Bot の起動時に読み込まれなくなります。",
+  "No plug-in in this profile has an on/off switch.": "このプロファイルにはオン/オフスイッチを持つプラグインがありません。",
   "Android beta": "Android ベータ版",
   "Cannot reach the Server. Trying again…": "サーバーに接続できません。再試行しています…",
   "No phones yet": "スマートフォンはまだありません",

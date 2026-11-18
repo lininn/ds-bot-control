@@ -241,6 +241,8 @@ export function createRelayController({
     deviceName: deviceName(),
     relayConnected: connector?.connected === true,
     state: relayState(),
+    // Why remote control is off in this window, so the settings page can say more than "off".
+    ...(locked() ? { reason: readOnly() } : {}),
   })
 
   const invalid = message => Object.assign(new Error(message), { code: 'bot/invalid' })
@@ -262,8 +264,12 @@ export function createRelayController({
           body: JSON.stringify({ username: name, password: secret, deviceId: deviceId(), machineId: machine(), name: deviceName() }),
           signal: AbortSignal.timeout(20_000),
         })
-      } catch {
-        throw invalid('Could not reach the relay. Check the address and that it is running.')
+      } catch (error) {
+        // The message alone cannot tell a wrong address from a blocked network; the cause code
+        // (e.g. UND_ERR_CONNECT_TIMEOUT, ENOTFOUND) is what makes the failure diagnosable.
+        const cause = error?.cause?.code ?? error?.cause?.message ?? error?.name
+        logger?.warn?.('relay login failed', error)
+        throw invalid(`Could not reach the relay${cause === undefined ? '' : ` (${cause})`}. Check the address and that it is running.`)
       }
       let data
       try { data = await response.json() } catch { data = null }

@@ -1,6 +1,9 @@
 // Spanish (es) localization for DS Bot client and DSH settings namespaces.
 
 export const ES = {
+  "Plugin switches": "Interruptores de plugins",
+  "Turn a plug-in off to stop it loading the next time DS Bot starts.": "Desactiva un plugin para que deje de cargarse la próxima vez que se inicie DS Bot.",
+  "No plug-in in this profile has an on/off switch.": "Ningún plugin de este perfil tiene interruptor de encendido/apagado.",
   "Android beta": "Android beta",
   "Cannot reach the Server. Trying again…": "No se puede conectar con el servidor. Reintentando…",
   "No phones yet": "Aún no hay teléfonos",

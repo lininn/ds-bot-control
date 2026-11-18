@@ -309,6 +309,21 @@ test('a refused sign-in reports the relay message and stays unbound', async (t) 
   assert.equal(FakeSocket.instances.length, 0)
 })
 
+test('a login that cannot reach the relay names the cause', async (t) => {
+  const h = relayHarness({
+    fetchImpl: async () => {
+      throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'UND_ERR_CONNECT_TIMEOUT' } })
+    },
+  })
+  t.after(h.cleanup)
+  await assert.rejects(h.controller.login({ username: 'alice', password: 'secret' }), (error) => {
+    assert.equal(error.code, 'bot/invalid')
+    // A bare "could not reach" cannot tell a wrong address from a blocked network.
+    assert.match(error.message, /UND_ERR_CONNECT_TIMEOUT/)
+    return true
+  })
+})
+
 test('signing in without an address is refused before any request', async (t) => {
   const h = relayHarness({ config: { token: '' } })
   t.after(h.cleanup)
@@ -445,6 +460,8 @@ test('a read-only host does not start the connector and says so', (t) => {
   h.controller.start()
   assert.equal(FakeSocket.instances.length, 0)
   assert.equal(h.controller.status().state, 'read-only')
+  // The settings page shows this reason, so the blocked window is visible there.
+  assert.equal(h.controller.status().reason, 'another dsh owns the team')
   h.controller.stop()
   // The same controller, once the lock is gone elsewhere, connects on a manual retry.
   FakeSocket.instances = []

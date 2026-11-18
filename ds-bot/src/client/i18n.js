@@ -1348,6 +1348,10 @@ const ZH = {
   'Up one level': '上一级',
   'No folders inside.': '里面没有文件夹。',
   'Some folders are not shown.': '还有一些文件夹没有显示。',
+  // Plugin switches
+  'Plugin switches': '插件开关',
+  'Turn a plug-in off to stop it loading the next time DS Bot starts.': '关闭插件后，DS Bot 下次启动时不再加载它。',
+  'No plug-in in this profile has an on/off switch.': '当前 profile 里没有带开关的插件。',
   // Remote control
   'Remote control': '远程控制',
   Connecting: '正在连接',

@@ -99,6 +99,9 @@ export function teamActions({ call, after, partFor, roster, ui, live, cards, hel
     relayLogin: payload => call('relay-login', payload),
     relayLogout: () => call('relay-logout'),
     relayReconnect: () => call('relay-reconnect'),
+    // Third-party bundles that carry their own on/off switch in the profile patch.
+    pluginsStatus: () => call('plugins-status'),
+    pluginSetEnabled: (profile, name, enabled) => call('plugin-set-enabled', { profile, name, enabled }),
     openMenu: (menu) => { ui.set(state => ({ ...state, menu, palette: null })) },
     closeMenu: () => { ui.set(state => (state.menu ? { ...state, menu: null } : state)) },
     closeOverlay: () => { ui.set(state => ({ ...state, newChat: null, newChatSection: null, exchange: null, details: state.newChat || state.exchange ? state.details : null })) },

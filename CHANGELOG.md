@@ -4,6 +4,12 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-18
+
+### Added
+
+- Settings → Plugin switches lists every bundle whose profile patch carries its own `enabled` switch and flips it in place, so a third-party bundle that rewrites itself back on at every install (such as `dsh-purge`) can be turned off from inside the app. The new value is read when the bundle loads, so it takes effect on the next DS Bot start.
+
 ## [0.4.1] - 2026-11-17
 
 ### Added

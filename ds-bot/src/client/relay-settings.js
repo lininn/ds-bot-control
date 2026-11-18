@@ -89,6 +89,10 @@ export function RelayPage({ actions, Section, Row }) {
         label: t('Signed in as {name}', { name: status.username || t('this computer') }),
         hint: t('Open the relay on your phone and sign in with the same account.'),
       }, h('span', { className: 'bt-set-hint', role: 'status' }, label)),
+      // The reason names the other window that owns the team, so the fix is visible here.
+      state === 'read-only' && typeof status.reason === 'string' && status.reason !== ''
+        ? h('p', { className: 'bt-set-hint', role: 'alert' }, status.reason)
+        : null,
       signedOut
         ? h('p', { className: 'bt-set-hint', role: 'alert' },
           t('After an upgrade, sign in again on this computer, then pair the phone again. Your phone keeps showing the old pairing until you do.'))
@@ -109,7 +113,9 @@ export function RelayPage({ actions, Section, Row }) {
 
   return h(Section, { title: t('Remote control') },
     h('p', { className: 'bt-set-hint' }, t('Sign in with your account to let your phone control this computer. The phone signs in with the same account.')),
-    status.state === 'read-only' ? h('p', { className: 'bt-set-hint' }, t('Remote control is off in this window')) : null,
+    status.state === 'read-only'
+      ? h('p', { className: 'bt-set-hint', role: 'alert' }, typeof status.reason === 'string' && status.reason !== '' ? status.reason : t('Remote control is off in this window'))
+      : null,
     h(Row, { label: t('Relay address'), hint: t('For example https://ds.example.com') },
       h('label', { className: 'bt-q-field' },
         h('input', {
