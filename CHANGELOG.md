@@ -4,6 +4,12 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-11-18
+
+### Changed
+
+- Removed the sponsorship section and its logos from the README.
+
 ## [0.4.2] - 2026-11-18
 
 ### Added
