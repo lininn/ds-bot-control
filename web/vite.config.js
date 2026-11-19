@@ -23,7 +23,7 @@ const ownPrimitives = {
 export default defineConfig({
   base: './',
   plugins: [ownPrimitives],
-  resolve: { dedupe: ['deep-view', 'react', 'react-dom', 'react-markdown', 'remark-gfm'] },
+  resolve: { dedupe: ['deep-view', 'qrcode-generator', 'react', 'react-dom', 'react-markdown', 'remark-gfm'] },
   // The reused sources are in ../app and ../ds-bot; the dev server must read them.
   server: { fs: { allow: ['..'] } },
   build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 2048 },
