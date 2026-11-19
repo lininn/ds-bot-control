@@ -1,6 +1,6 @@
 {
   "name": "ds-web",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "apiProtocol": 1,
   "entry": "index.html"
 }
