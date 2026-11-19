@@ -1,6 +1,26 @@
 // Japanese (ja) localization for DS Bot client and DSH settings namespaces.
 
 export const JA = {
+  // IM channels
+  "Open {site}": "{site} を開く",
+  "Scan with WeChat": "WeChat でスキャン",
+  "Getting a code…": "QR コードを取得中…",
+  "Get a new code": "新しい QR コードを取得",
+  "Direct message": "ダイレクトメッセージ",
+  "Wants to talk through {bot}": "{bot} 経由での会話をリクエスト中",
+  "Enabled": "有効",
+  "Waiting for approval": "承認待ち",
+  "Accounts": "アカウント",
+  "Send the IM bot a message to connect your account": "IM ボットにメッセージを送るとアカウントが連携されます",
+  "Group": "グループ",
+  "Remove this IM bot? Its accounts and chats are removed too.": "この IM ボットを削除しますか？関連するアカウントとチャットも削除されます。",
+  "Remove IM bot": "IM ボットを削除",
+  "Talks to {bot}": "会話先: {bot}",
+  "{count} waiting for approval": "{count} 件が承認待ち",
+  "{count} added": "{count} 件追加済み",
+  "Your IM bots": "IM ボット",
+  "Add an IM bot": "IM ボットを追加",
+  "Choose a platform": "プラットフォームを選択",
   "Plugin switches": "プラグインスイッチ",
   "Turn a plug-in off to stop it loading the next time DS Bot starts.": "プラグインをオフにすると、次回 DS Bot の起動時に読み込まれなくなります。",
   "No plug-in in this profile has an on/off switch.": "このプロファイルにはオン/オフスイッチを持つプラグインがありません。",

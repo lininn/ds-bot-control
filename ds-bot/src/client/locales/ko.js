@@ -1,6 +1,26 @@
 // Korean (ko) localization for DS Bot client and DSH settings namespaces.
 
 export const KO = {
+  // IM channels
+  "Open {site}": "{site} 열기",
+  "Scan with WeChat": "WeChat으로 스캔",
+  "Getting a code…": "QR 코드 가져오는 중…",
+  "Get a new code": "새 QR 코드 받기",
+  "Direct message": "개인 메시지",
+  "Wants to talk through {bot}": "{bot}을(를) 통해 대화 요청",
+  "Enabled": "사용",
+  "Waiting for approval": "승인 대기 중",
+  "Accounts": "계정",
+  "Send the IM bot a message to connect your account": "IM 봇에게 메시지를 보내 계정을 연결하세요",
+  "Group": "그룹",
+  "Remove this IM bot? Its accounts and chats are removed too.": "이 IM 봇을 제거하시겠습니까? 연결된 계정과 대화도 함께 제거됩니다.",
+  "Remove IM bot": "IM 봇 제거",
+  "Talks to {bot}": "대화 상대: {bot}",
+  "{count} waiting for approval": "{count}개 승인 대기 중",
+  "{count} added": "{count}개 추가됨",
+  "Your IM bots": "내 IM 봇",
+  "Add an IM bot": "IM 봇 추가",
+  "Choose a platform": "플랫폼 선택",
   "Plugin switches": "플러그인 스위치",
   "Turn a plug-in off to stop it loading the next time DS Bot starts.": "플러그인을 끄면 다음에 DS Bot 을 시작할 때 더 이상 로드되지 않습니다.",
   "No plug-in in this profile has an on/off switch.": "이 프로필에는 켜기/끄기 스위치가 있는 플러그인이 없습니다.",

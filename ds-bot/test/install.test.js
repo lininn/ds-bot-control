@@ -126,6 +126,10 @@ test('apply registers listeners and effects in a fixed order', (t) => {
     'effect ds-bot: live feed route',
     'route GET /api/bot/feed',
     'effect ds-bot: live feed',
+    // im.js registers its session/event listener and effect at install; phone's
+    // link effect waits for channel.js to hand over its endpoint, so it lands later.
+    'on session/event',
+    'effect ds-bot: im',
     'effect ds-bot: phone link',
     'effect ds-bot: api route',
     'route POST /api/bot',

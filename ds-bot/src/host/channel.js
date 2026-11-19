@@ -124,6 +124,8 @@ export function install(rt) {
     readOnly: rt.readOnly() ?? null,
     // The computer-use switch, the provider it mounts, and each Bot's level and app grants.
     computer: rt.computerView?.() ?? { enabled: false },
+    // IM connections (settings → IM): one per chat-app bot the user added.
+    im: rt.imView?.() ?? { connections: [], platforms: [] },
   })
   // What changes without a new revision, sent with every state answer. `learning`:
   // each Bot's pending skill proposals; `learningSettled`: the answered ones of its
@@ -746,6 +748,17 @@ export function install(rt) {
           rt.browserChannel?.setHold(botId, { by: 'user', reason: 'stopped', note: 'The user is controlling this browser.' })
           return ok(true)
         }
+        case 'im-add':
+        case 'im-update':
+        case 'im-remove':
+        case 'im-pair':
+        case 'im-unpair':
+        case 'im-chat':
+        case 'im-retry':
+        case 'im-login-start':
+        case 'im-login-wait':
+          await rt.load()
+          return ok(await rt.imEndpoint(endpoint, body))
         case 'local-agents':
         case 'local-agent-models':
         case 'local-agent-refresh':
@@ -838,7 +851,7 @@ export function install(rt) {
 
   // The user's answer to an ask_user card, from the web or an IM chat. A Bot id or an
   // earlier part of its own chat means the current one.
-  async function answerQuestion(sessionRef, questionId, answer) {
+  async function answerQuestion(sessionRef, questionId, answer, requestId) {
     const past = rt.pastOwners.get(sessionRef)
     const sessionId = rt.botOf(sessionRef) ? rt.chatOf(sessionRef) : past && past.roomId === undefined ? rt.chatOf(past.botId) : sessionRef
     const question = rt.own(state.questions, sessionId)
@@ -850,7 +863,7 @@ export function install(rt) {
     try {
       await rt.ensureCapabilities(sessionId)
       const agent = await rt.resolveAgent(sessionId)
-      agent.followup(createUserMessage({ content: [{ type: 'text', text: reply.text }], source: reply.source }))
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: reply.text }], source: { ...reply.source, ...(requestId === undefined ? {} : { rpcId: requestId }) } }))
       await ctx.sessions.flush(agent.session)
     } catch (error) {
       state.questions[sessionId] ??= question

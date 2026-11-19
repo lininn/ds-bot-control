@@ -4,6 +4,10 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- Settings → IM connects the Bot team to Feishu/Lark, DingTalk, WeCom, QQ, Telegram, Discord, Slack and WeChat. Each platform is one long-lived connection: message the Bot directly or add it to a group, pair an account by playing the platform's login or scanning a WeChat QR code, and answer questions and approvals from the chat. Connections, accounts and chats survive a restart, and only the one dsh that holds the team opens them. Brought in from upstream DS Bot.
+
 ## [0.4.3] - 2026-11-18
 
 ### Changed
@@ -38,7 +42,7 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 - Sync with upstream DS Bot 0.3.5: DeepSeek Harness `0.2.2-rc.1`, the six new interface languages, frameless macOS window, the desktop app's own DSH update handling, Computer use on Windows and macOS, the sidebar sections and the memory rework.
 - Kept this fork's own features: the Relay Server remote control (Settings → Remote control), the responsive web shell and the WebView Android app, and first-open installation into Applications for the macOS app.
-- Changed the plugin's npm package name to `@lininn/ds-bot` and the repository links to `lininn/ds-bot-control`. IM platforms are not included in this fork.
+- Changed the plugin's npm package name to `@lininn/ds-bot` and the repository links to `lininn/ds-bot-control`.
 
 ## [0.3.5] - 2026-11-11
 

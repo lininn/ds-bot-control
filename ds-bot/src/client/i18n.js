@@ -11,6 +11,26 @@ import { DSH_DE, HOST_ERRORS_DE, DE } from './locales/de.js'
 export const NAMESPACE = 'ds-bot'
 
 const ZH = {
+  // IM channels
+  'Open {site}': '打开 {site}',
+  'Scan with WeChat': '用微信扫码',
+  'Getting a code…': '正在获取二维码…',
+  'Get a new code': '换一个二维码',
+  'Direct message': '私聊',
+  'Wants to talk through {bot}': '想通过 {bot} 对话',
+  Enabled: '启用',
+  'Waiting for approval': '等你允许',
+  Accounts: '账号',
+  'Send the IM bot a message to connect your account': '给 IM 机器人发一条消息，即可连接你的账号',
+  Group: '群',
+  'Remove this IM bot? Its accounts and chats are removed too.': '确认移除这个 IM 机器人？它的账号和聊天也会一起移除。',
+  'Remove IM bot': '移除 IM 机器人',
+  'Talks to {bot}': '对话对象 {bot}',
+  '{count} waiting for approval': '{count} 个等你允许',
+  '{count} added': '已添加 {count} 个',
+  'Your IM bots': '我的 IM 机器人',
+  'Add an IM bot': '添加 IM 机器人',
+  'Choose a platform': '选择平台',
   // Shared
   'Main Bot': '主 Bot',
   Working: '进行中',

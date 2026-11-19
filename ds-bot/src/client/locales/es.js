@@ -1,6 +1,26 @@
 // Spanish (es) localization for DS Bot client and DSH settings namespaces.
 
 export const ES = {
+  // IM channels
+  "Open {site}": "Abrir {site}",
+  "Scan with WeChat": "Escanear con WeChat",
+  "Getting a code…": "Obteniendo código…",
+  "Get a new code": "Obtener nuevo código",
+  "Direct message": "Mensaje directo",
+  "Wants to talk through {bot}": "Quiere hablar a través de {bot}",
+  "Enabled": "Activado",
+  "Waiting for approval": "Esperando aprobación",
+  "Accounts": "Cuentas",
+  "Send the IM bot a message to connect your account": "Envía un mensaje al bot de IM para conectar tu cuenta",
+  "Group": "Grupo",
+  "Remove this IM bot? Its accounts and chats are removed too.": "¿Quitar este bot de IM? Sus cuentas y chats también se eliminarán.",
+  "Remove IM bot": "Quitar bot de IM",
+  "Talks to {bot}": "Habla con {bot}",
+  "{count} waiting for approval": "{count} esperando aprobación",
+  "{count} added": "{count} añadidos",
+  "Your IM bots": "Tus bots de IM",
+  "Add an IM bot": "Añadir un bot de IM",
+  "Choose a platform": "Elige una plataforma",
   "Plugin switches": "Interruptores de plugins",
   "Turn a plug-in off to stop it loading the next time DS Bot starts.": "Desactiva un plugin para que deje de cargarse la próxima vez que se inicie DS Bot.",
   "No plug-in in this profile has an on/off switch.": "Ningún plugin de este perfil tiene interruptor de encendido/apagado.",

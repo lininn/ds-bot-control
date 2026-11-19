@@ -1,6 +1,26 @@
 // French (fr) localization for DS Bot client and DSH settings namespaces.
 
 export const FR = {
+  // IM channels
+  "Open {site}": "Ouvrir {site}",
+  "Scan with WeChat": "Scanner avec WeChat",
+  "Getting a code…": "Obtention d’un code QR…",
+  "Get a new code": "Nouveau code QR",
+  "Direct message": "Message direct",
+  "Wants to talk through {bot}": "Souhaite discuter via {bot}",
+  "Enabled": "Activé",
+  "Waiting for approval": "En attente d’approbation",
+  "Accounts": "Comptes",
+  "Send the IM bot a message to connect your account": "Envoyez un message au bot IM pour connecter votre compte",
+  "Group": "Groupe",
+  "Remove this IM bot? Its accounts and chats are removed too.": "Supprimer ce bot IM ? Ses comptes et ses discussions seront également supprimés.",
+  "Remove IM bot": "Supprimer le bot IM",
+  "Talks to {bot}": "Discute avec {bot}",
+  "{count} waiting for approval": "{count} en attente d’approbation",
+  "{count} added": "{count} ajouté(s)",
+  "Your IM bots": "Vos bots IM",
+  "Add an IM bot": "Ajouter un bot IM",
+  "Choose a platform": "Choisir une plateforme",
   "Plugin switches": "Interrupteurs de plugins",
   "Turn a plug-in off to stop it loading the next time DS Bot starts.": "Désactivez un plugin pour qu’il ne se charge plus au prochain démarrage de DS Bot.",
   "No plug-in in this profile has an on/off switch.": "Aucun plugin de ce profil n’a d’interrupteur marche/arrêt.",
